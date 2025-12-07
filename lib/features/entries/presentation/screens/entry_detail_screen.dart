@@ -9,7 +9,7 @@ import '../../../../shared/widgets/entry_card.dart';
 import '../../../../shared/widgets/error_display.dart';
 import '../../../../shared/widgets/loading_indicator.dart';
 import '../../../../shared/widgets/tag_chip.dart';
-import '../../data/repositories/local_entry_repository.dart';
+import '../../data/repositories/entry_repository.dart';
 import '../bloc/entries_list_cubit.dart';
 import '../bloc/entry_detail_cubit.dart';
 
@@ -32,7 +32,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   void initState() {
     super.initState();
     _detailCubit = EntryDetailCubit(
-      entryRepository: context.read<LocalEntryRepository>(),
+      entryRepository: context.read<EntryRepository>(),
       entryId: widget.entryId,
     )..loadEntry();
   }

@@ -1,8 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../entries/domain/entities/entry_entity.dart';
-import '../../data/repositories/local_tag_repository.dart';
-import '../../data/repositories/tag_repository.dart' show TagWithEntryCount;
+import '../../data/repositories/tag_repository.dart';
 
 // ============ States ============
 
@@ -39,10 +38,10 @@ class TagsError extends TagsState {
 // ============ Cubit ============
 
 class TagsCubit extends Cubit<TagsState> {
-  final LocalTagRepository _tagRepository;
+  final TagRepository _tagRepository;
 
   TagsCubit({
-    required LocalTagRepository tagRepository,
+    required TagRepository tagRepository,
   })  : _tagRepository = tagRepository,
         super(const TagsInitial());
 

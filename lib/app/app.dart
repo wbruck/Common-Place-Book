@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../core/database/database_provider.dart';
+import '../features/entries/data/repositories/entry_repository.dart';
 import '../features/entries/data/repositories/local_entry_repository.dart';
 import '../features/entries/presentation/bloc/entries_list_cubit.dart';
 import '../features/tags/data/repositories/local_tag_repository.dart';
+import '../features/tags/data/repositories/tag_repository.dart';
 import '../features/tags/presentation/bloc/tags_cubit.dart';
 import 'router.dart';
 import 'theme/app_theme.dart';
@@ -16,25 +18,30 @@ class CommonPlaceBookApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final database = DatabaseProvider.instance;
 
+    // Create concrete implementations
+    final entryRepository = LocalEntryRepository(database: database);
+    final tagRepository = LocalTagRepository(database: database);
+
     return MultiRepositoryProvider(
       providers: [
-        RepositoryProvider(
-          create: (_) => LocalEntryRepository(database: database),
+        // Provide as abstract types for dependency inversion
+        RepositoryProvider<EntryRepository>(
+          create: (_) => entryRepository,
         ),
-        RepositoryProvider(
-          create: (_) => LocalTagRepository(database: database),
+        RepositoryProvider<TagRepository>(
+          create: (_) => tagRepository,
         ),
       ],
       child: MultiBlocProvider(
         providers: [
           BlocProvider(
             create: (context) => EntriesListCubit(
-              entryRepository: context.read<LocalEntryRepository>(),
+              entryRepository: context.read<EntryRepository>(),
             )..loadEntries(),
           ),
           BlocProvider(
             create: (context) => TagsCubit(
-              tagRepository: context.read<LocalTagRepository>(),
+              tagRepository: context.read<TagRepository>(),
             )..loadTags(),
           ),
         ],

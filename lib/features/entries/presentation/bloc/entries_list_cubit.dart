@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../data/repositories/local_entry_repository.dart';
+import '../../data/repositories/entry_repository.dart';
 import '../../domain/entities/entry_entity.dart';
 
 // ============ States ============
@@ -64,13 +64,13 @@ class EntriesListError extends EntriesListState {
 // ============ Cubit ============
 
 class EntriesListCubit extends Cubit<EntriesListState> {
-  final LocalEntryRepository _entryRepository;
+  final EntryRepository _entryRepository;
 
   String? _currentFilterTagId;
   String? _currentSearchQuery;
 
   EntriesListCubit({
-    required LocalEntryRepository entryRepository,
+    required EntryRepository entryRepository,
   })  : _entryRepository = entryRepository,
         super(const EntriesListInitial());
 

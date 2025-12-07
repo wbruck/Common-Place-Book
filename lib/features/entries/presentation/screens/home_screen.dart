@@ -7,7 +7,7 @@ import '../../../../shared/widgets/entry_card.dart';
 import '../../../../shared/widgets/error_display.dart';
 import '../../../../shared/widgets/loading_indicator.dart';
 import '../../../tags/presentation/bloc/tags_cubit.dart';
-import '../../data/repositories/local_entry_repository.dart';
+import '../../data/repositories/entry_repository.dart';
 import '../../domain/entities/entry_entity.dart';
 import '../bloc/entries_list_cubit.dart';
 import '../../../discovery/presentation/bloc/discovery_cubit.dart';
@@ -26,7 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _discoveryCubit = DiscoveryCubit(
-      entryRepository: context.read<LocalEntryRepository>(),
+      entryRepository: context.read<EntryRepository>(),
     )..loadRandomEntry();
   }
 
@@ -366,14 +366,14 @@ class _HomeScreenState extends State<HomeScreen> {
     showSearch(
       context: context,
       delegate: EntrySearchDelegate(
-        entryRepository: context.read<LocalEntryRepository>(),
+        entryRepository: context.read<EntryRepository>(),
       ),
     );
   }
 }
 
 class EntrySearchDelegate extends SearchDelegate<EntryEntity?> {
-  final LocalEntryRepository entryRepository;
+  final EntryRepository entryRepository;
 
   EntrySearchDelegate({required this.entryRepository});
 

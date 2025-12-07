@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../entries/data/repositories/local_entry_repository.dart';
+import '../../../entries/data/repositories/entry_repository.dart';
 import '../../../entries/domain/entities/entry_entity.dart';
 
 // ============ States ============
@@ -60,12 +60,12 @@ class DiscoveryError extends DiscoveryState {
 // ============ Cubit ============
 
 class DiscoveryCubit extends Cubit<DiscoveryState> {
-  final LocalEntryRepository _entryRepository;
+  final EntryRepository _entryRepository;
   final List<EntryEntity> _history = [];
   String? _currentFilterTagId;
 
   DiscoveryCubit({
-    required LocalEntryRepository entryRepository,
+    required EntryRepository entryRepository,
   })  : _entryRepository = entryRepository,
         super(const DiscoveryInitial());
 

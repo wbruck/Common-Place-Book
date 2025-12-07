@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../data/repositories/local_entry_repository.dart';
+import '../../data/repositories/entry_repository.dart';
 import '../../domain/entities/entry_entity.dart';
 
 // ============ States ============
@@ -80,10 +80,10 @@ class EntryFormError extends EntryFormState {
 // ============ Cubit ============
 
 class EntryFormCubit extends Cubit<EntryFormState> {
-  final LocalEntryRepository _entryRepository;
+  final EntryRepository _entryRepository;
 
   EntryFormCubit({
-    required LocalEntryRepository entryRepository,
+    required EntryRepository entryRepository,
   })  : _entryRepository = entryRepository,
         super(const EntryFormInitial());
 

@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../shared/widgets/loading_indicator.dart';
 import '../../../../shared/widgets/tag_chip.dart';
 import '../../../tags/presentation/bloc/tags_cubit.dart';
-import '../../data/repositories/local_entry_repository.dart';
+import '../../data/repositories/entry_repository.dart';
 import '../../domain/entities/entry_entity.dart';
 import '../bloc/entries_list_cubit.dart';
 import '../bloc/entry_form_cubit.dart';
@@ -33,7 +33,7 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
   void initState() {
     super.initState();
     _formCubit = EntryFormCubit(
-      entryRepository: context.read<LocalEntryRepository>(),
+      entryRepository: context.read<EntryRepository>(),
     );
 
     _contentController = TextEditingController();
