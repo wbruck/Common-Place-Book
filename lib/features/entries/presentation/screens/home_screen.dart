@@ -45,8 +45,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       appBar: AppBar(
         title: Text(_getGreeting()),
@@ -88,8 +86,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          context.read<EntriesListCubit>().refresh();
-          _discoveryCubit.loadRandomEntry();
+          await Future.wait([
+            context.read<EntriesListCubit>().refresh(),
+            _discoveryCubit.loadRandomEntry(),
+          ]);
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),

@@ -1,6 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../data/repositories/entry_repository.dart';
 import '../../data/repositories/local_entry_repository.dart';
 import '../../domain/entities/entry_entity.dart';
 

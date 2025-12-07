@@ -2,7 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../entries/domain/entities/entry_entity.dart';
 import '../../data/repositories/local_tag_repository.dart';
-import '../../data/repositories/tag_repository.dart';
+import '../../data/repositories/tag_repository.dart' show TagWithEntryCount;
 
 // ============ States ============
 

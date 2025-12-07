@@ -128,9 +128,7 @@ class DiscoveryCubit extends Cubit<DiscoveryState> {
     return _history.length > 1 ? _history[1] : null;
   }
 
-  void showEntry(EntryEntity entry) async {
-    final currentState = state;
-
+  Future<void> showEntry(EntryEntity entry) async {
     // Add current entry to history
     _history.insert(0, entry);
     if (_history.length > 10) {

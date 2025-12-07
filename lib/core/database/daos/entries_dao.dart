@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:drift/drift.dart';
 
 import '../database.dart';
@@ -163,19 +161,26 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
   }
 
   Future<Entry?> getRandomEntry() async {
-    final allEntries = await (select(entries)).get();
-    if (allEntries.isEmpty) return null;
+    // Use SQL RANDOM() for efficient random selection without loading all entries
+    final query = select(entries)
+      ..orderBy([(_) => OrderingTerm(expression: const CustomExpression('RANDOM()'))])
+      ..limit(1);
 
-    final random = Random();
-    return allEntries[random.nextInt(allEntries.length)];
+    final results = await query.get();
+    return results.isEmpty ? null : results.first;
   }
 
   Future<Entry?> getRandomEntryByTag(String tagId) async {
-    final tagEntries = await getEntriesByTag(tagId);
-    if (tagEntries.isEmpty) return null;
+    // Use SQL RANDOM() for efficient random selection
+    final query = select(entries).join([
+      innerJoin(entryTags, entryTags.entryId.equalsExp(entries.id)),
+    ])
+      ..where(entryTags.tagId.equals(tagId))
+      ..orderBy([OrderingTerm(expression: const CustomExpression('RANDOM()'))])
+      ..limit(1);
 
-    final random = Random();
-    return tagEntries[random.nextInt(tagEntries.length)];
+    final results = await query.map((row) => row.readTable(entries)).get();
+    return results.isEmpty ? null : results.first;
   }
 
   Future<List<Entry>> getRelatedEntries(String entryId, {int limit = 5}) async {

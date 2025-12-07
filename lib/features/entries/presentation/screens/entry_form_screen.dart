@@ -6,6 +6,7 @@ import '../../../../shared/widgets/loading_indicator.dart';
 import '../../../../shared/widgets/tag_chip.dart';
 import '../../../tags/presentation/bloc/tags_cubit.dart';
 import '../../data/repositories/local_entry_repository.dart';
+import '../../domain/entities/entry_entity.dart';
 import '../bloc/entries_list_cubit.dart';
 import '../bloc/entry_form_cubit.dart';
 
@@ -178,14 +179,15 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
   Widget _buildTagSelector(BuildContext context, EntryFormReady? formState) {
     return BlocBuilder<TagsCubit, TagsState>(
       builder: (context, tagsState) {
-        final tags = tagsState is TagsLoaded ? tagsState.tags : <dynamic>[];
+        final tags =
+            tagsState is TagsLoaded ? tagsState.tags : <TagEntity>[];
         final selectedTagIds = formState?.tagIds ?? [];
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TagSelector(
-              availableTags: tags.cast(),
+              availableTags: tags,
               selectedTagIds: selectedTagIds,
               onTagSelected: _formCubit.addTag,
               onTagDeselected: _formCubit.removeTag,
@@ -200,7 +202,6 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
 
   Future<void> _showCreateTagDialog(BuildContext context) async {
     final controller = TextEditingController();
-    final theme = Theme.of(context);
 
     final result = await showDialog<String>(
       context: context,
