@@ -1,5 +1,8 @@
 import 'package:drift/drift.dart';
-import 'package:drift_flutter/drift_flutter.dart';
+
+import 'connection/connection.dart'
+    if (dart.library.io) 'connection/native.dart'
+    if (dart.library.html) 'connection/web.dart' as connection;
 
 part 'database.g.dart';
 
@@ -69,7 +72,7 @@ class AppDatabase extends _$AppDatabase {
   int get schemaVersion => 2;
 
   static QueryExecutor _openConnection() {
-    return driftDatabase(name: 'common_place_book.db');
+    return connection.openConnection();
   }
 
   @override
