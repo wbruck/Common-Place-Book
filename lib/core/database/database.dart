@@ -96,31 +96,31 @@ class AppDatabase extends _$AppDatabase {
     final now = DateTime.now().millisecondsSinceEpoch;
     final defaultCategories = [
       CategoriesCompanion.insert(
-        id: const Value('philosophy'),
+        id: 'philosophy',
         name: 'Philosophy',
         icon: const Value('lightbulb'),
         createdAt: now,
       ),
       CategoriesCompanion.insert(
-        id: const Value('literature'),
+        id: 'literature',
         name: 'Literature',
         icon: const Value('book'),
         createdAt: now,
       ),
       CategoriesCompanion.insert(
-        id: const Value('science'),
+        id: 'science',
         name: 'Science',
         icon: const Value('science'),
         createdAt: now,
       ),
       CategoriesCompanion.insert(
-        id: const Value('personal'),
+        id: 'personal',
         name: 'Personal',
         icon: const Value('person'),
         createdAt: now,
       ),
       CategoriesCompanion.insert(
-        id: const Value('wisdom'),
+        id: 'wisdom',
         name: 'Wisdom',
         icon: const Value('star'),
         createdAt: now,
