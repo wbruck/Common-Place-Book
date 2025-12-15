@@ -48,14 +48,20 @@ dart run build_runner build --delete-conflicting-outputs
 ```
 
 ### Web Database Setup
-This project uses **drift's IndexedDB storage** for web instead of WASM SQLite:
-- **No additional files required** - works out of the box
-- Uses browser's native IndexedDB storage
-- Simple, reliable, no CORS headers needed
-- Trade-off: Slightly different SQL feature set compared to full SQLite
+This project uses **drift's sql.js with IndexedDB storage** for the web platform:
 
-**Why IndexedDB?**
-WASM SQLite requires complex worker setup and CORS headers. IndexedDB is simpler and works reliably across all browsers with no additional configuration.
+**Required files in `web/` directory:**
+- `sql-wasm.js` - SQL.js JavaScript library
+- `sql-wasm.wasm` - SQL.js WebAssembly module
+
+These files are downloaded from [sql.js CDN](https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/) and should already be in the repository.
+
+**Why sql.js + IndexedDB?**
+- Simpler than WASM SQLite with drift workers
+- No CORS headers required
+- Full SQL support via sql.js
+- Data persists in browser's IndexedDB
+- Works reliably across all modern browsers
 
 ## Architecture
 
