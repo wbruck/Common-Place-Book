@@ -103,10 +103,6 @@ coverage/
 *.freezed.dart
 *.gr.dart
 
-# Web drift worker generated files
-web/drift_worker.dart.js.deps
-web/drift_worker.dart.js.map
-
 # Environment files
 .env
 .env.*

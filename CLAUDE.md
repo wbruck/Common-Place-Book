@@ -28,8 +28,8 @@ flutter run -d macos         # macOS
 flutter run -d android       # Android
 flutter run -d ios           # iOS
 
-# Run on web with required CORS headers for WASM database
-flutter run -d chrome --web-header=Cross-Origin-Opener-Policy=same-origin --web-header=Cross-Origin-Embedder-Policy=require-corp
+# Run on web
+flutter run -d chrome
 
 # Run tests
 flutter test
@@ -48,13 +48,14 @@ dart run build_runner build --delete-conflicting-outputs
 ```
 
 ### Web Database Setup
-The web platform requires the WASM SQLite module in the `web/` directory:
-- `sqlite3.wasm` - SQLite WASM module (download from [sqlite3.dart releases](https://github.com/simolus3/sqlite3.dart/releases))
+This project uses **drift's IndexedDB storage** for web instead of WASM SQLite:
+- **No additional files required** - works out of the box
+- Uses browser's native IndexedDB storage
+- Simple, reliable, no CORS headers needed
+- Trade-off: Slightly different SQL feature set compared to full SQLite
 
-**Note**: This project uses drift's WASM mode without web workers for simplicity. This means:
-- Database initializes faster and avoids worker compilation issues
-- Trade-off: Database is not shared across browser tabs (each tab has its own instance)
-- If multi-tab support is needed, see drift's [web worker documentation](https://drift.simonbinder.eu/web/)
+**Why IndexedDB?**
+WASM SQLite requires complex worker setup and CORS headers. IndexedDB is simpler and works reliably across all browsers with no additional configuration.
 
 ## Architecture
 
