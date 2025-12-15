@@ -21,13 +21,28 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late final DiscoveryCubit _discoveryCubit;
+  bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
     _discoveryCubit = DiscoveryCubit(
       entryRepository: context.read<EntryRepository>(),
-    )..loadRandomEntry();
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      _initialized = true;
+      // Load data after the widget tree is built and database is ready
+      Future.microtask(() {
+        context.read<EntriesListCubit>().loadEntries();
+        context.read<TagsCubit>().loadTags();
+        _discoveryCubit.loadRandomEntry();
+      });
+    }
   }
 
   @override

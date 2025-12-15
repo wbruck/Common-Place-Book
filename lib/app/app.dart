@@ -37,12 +37,12 @@ class CommonPlaceBookApp extends StatelessWidget {
           BlocProvider(
             create: (context) => EntriesListCubit(
               entryRepository: context.read<EntryRepository>(),
-            )..loadEntries(),
+            ),
           ),
           BlocProvider(
             create: (context) => TagsCubit(
               tagRepository: context.read<TagRepository>(),
-            )..loadTags(),
+            ),
           ),
         ],
         child: MaterialApp.router(
