@@ -1,14 +1,12 @@
 import 'package:drift/drift.dart';
 import 'package:drift/web.dart';
 
-/// Opens a database connection for web platform using IndexedDB.
-/// This is simpler and more reliable than WASM, though with some limitations.
+/// Opens a database connection for web platform using sql.js + IndexedDB.
 QueryExecutor openConnection() {
-  return WebDatabase.withStorage(
-    DriftWebStorage.indexedDb(
-      'common_place_book_db',
-      migrateFromLocalStorage: false,
-      inWebWorker: false,
-    ),
+  return WebDatabase(
+    'common_place_book_db',
+    initializer: () async {
+      // sql.js files are loaded automatically from web/ directory
+    },
   );
 }
