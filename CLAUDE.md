@@ -48,14 +48,13 @@ dart run build_runner build --delete-conflicting-outputs
 ```
 
 ### Web Database Setup
-The web platform requires WASM SQLite files in the `web/` directory:
+The web platform requires the WASM SQLite module in the `web/` directory:
 - `sqlite3.wasm` - SQLite WASM module (download from [sqlite3.dart releases](https://github.com/simolus3/sqlite3.dart/releases))
-- `drift_worker.dart.js` - Compiled worker for database sharing across tabs
 
-To regenerate the drift worker after updates:
-```bash
-dart compile js -O4 -o web/drift_worker.dart.js web/drift_worker.dart
-```
+**Note**: This project uses drift's WASM mode without web workers for simplicity. This means:
+- Database initializes faster and avoids worker compilation issues
+- Trade-off: Database is not shared across browser tabs (each tab has its own instance)
+- If multi-tab support is needed, see drift's [web worker documentation](https://drift.simonbinder.eu/web/)
 
 ## Architecture
 
