@@ -23,10 +23,13 @@ dart run build_runner watch
 flutter run
 
 # Run on specific platform
-flutter run -d chrome        # Web
+flutter run -d chrome        # Web (requires CORS headers, see below)
 flutter run -d macos         # macOS
 flutter run -d android       # Android
 flutter run -d ios           # iOS
+
+# Run on web with required CORS headers for WASM database
+flutter run -d chrome --web-header=Cross-Origin-Opener-Policy=same-origin --web-header=Cross-Origin-Embedder-Policy=require-corp
 
 # Run tests
 flutter test
@@ -42,6 +45,16 @@ flutter analyze
 After modifying any Drift database files (database.dart, DAOs), regenerate with:
 ```bash
 dart run build_runner build --delete-conflicting-outputs
+```
+
+### Web Database Setup
+The web platform requires WASM SQLite files in the `web/` directory:
+- `sqlite3.wasm` - SQLite WASM module (download from [sqlite3.dart releases](https://github.com/simolus3/sqlite3.dart/releases))
+- `drift_worker.dart.js` - Compiled worker for database sharing across tabs
+
+To regenerate the drift worker after updates:
+```bash
+dart compile js -O4 -o web/drift_worker.dart.js web/drift_worker.dart
 ```
 
 ## Architecture
