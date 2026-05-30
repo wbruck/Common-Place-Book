@@ -1,30 +1,32 @@
-// This is a basic Flutter widget test.
+// Smoke test for the Common Place Book app.
 //
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// Builds the real root widget (CommonPlaceBookApp) against an in-memory
+// database and verifies it boots without throwing.
 
+import 'package:common_place_book/app/app.dart';
+import 'package:common_place_book/core/database/database.dart';
+import 'package:common_place_book/core/database/database_provider.dart';
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:common_place_book/main.dart';
-
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  late AppDatabase database;
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  setUp(() {
+    // Use an in-memory database so tests don't touch the platform connection.
+    database = AppDatabase.forTesting(NativeDatabase.memory());
+    DatabaseProvider.initialize(database);
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  tearDown(() async {
+    await DatabaseProvider.close();
+  });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  testWidgets('App boots and renders a MaterialApp', (tester) async {
+    await tester.pumpWidget(const CommonPlaceBookApp());
+    await tester.pumpAndSettle();
+
+    expect(find.byType(MaterialApp), findsOneWidget);
   });
 }

@@ -1,16 +1,9 @@
 import 'package:flutter/material.dart';
 
 class EmptyState extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String? subtitle;
-  final String? actionLabel;
-  final VoidCallback? onAction;
 
   const EmptyState({
-    super.key,
-    required this.icon,
-    required this.title,
+    required this.icon, required this.title, super.key,
     this.subtitle,
     this.actionLabel,
     this.onAction,
@@ -41,6 +34,11 @@ class EmptyState extends StatelessWidget {
       subtitle: 'No entries are tagged with "$tagName"',
     );
   }
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -55,13 +53,13 @@ class EmptyState extends StatelessWidget {
             Icon(
               icon,
               size: 64,
-              color: theme.colorScheme.onSurface.withOpacity(0.3),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 16),
             Text(
               title,
               style: theme.textTheme.titleLarge?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
               textAlign: TextAlign.center,
             ),
@@ -70,7 +68,7 @@ class EmptyState extends StatelessWidget {
               Text(
                 subtitle!,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.5),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                 ),
                 textAlign: TextAlign.center,
               ),

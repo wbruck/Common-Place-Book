@@ -1,15 +1,15 @@
 /// Base class for application errors.
 /// Provides structured error handling with user-friendly messages.
 sealed class AppError {
-  final String message;
-  final String? debugInfo;
-  final Object? originalError;
 
   const AppError({
     required this.message,
     this.debugInfo,
     this.originalError,
   });
+  final String message;
+  final String? debugInfo;
+  final Object? originalError;
 
   @override
   String toString() => message;
@@ -49,7 +49,6 @@ class DatabaseError extends AppError {
 
 /// Validation errors
 class ValidationError extends AppError {
-  final String field;
 
   const ValidationError({
     required super.message,
@@ -74,6 +73,7 @@ class ValidationError extends AppError {
         field: field,
         debugInfo: 'Validation failed: $field - $reason',
       );
+  final String field;
 }
 
 /// Network-related errors (for future cloud sync)
@@ -110,7 +110,6 @@ class UnknownError extends AppError {
   });
 
   factory UnknownError.from(Object error) => UnknownError(
-        message: 'An unexpected error occurred',
         debugInfo: error.toString(),
         originalError: error,
       );

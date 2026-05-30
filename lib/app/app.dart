@@ -50,7 +50,6 @@ class CommonPlaceBookApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light,
           darkTheme: AppTheme.dark,
-          themeMode: ThemeMode.system,
           routerConfig: appRouter,
         ),
       ),

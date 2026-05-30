@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// A Result type for handling success and failure cases without exceptions.
 /// This provides a more functional approach to error handling.
 sealed class Result<T, E> {
@@ -78,10 +80,11 @@ sealed class Result<T, E> {
 }
 
 /// Represents a successful result
+@immutable
 final class Success<T, E> extends Result<T, E> {
-  final T value;
 
   const Success(this.value);
+  final T value;
 
   @override
   bool operator ==(Object other) =>
@@ -98,10 +101,11 @@ final class Success<T, E> extends Result<T, E> {
 }
 
 /// Represents a failed result
+@immutable
 final class Failure<T, E> extends Result<T, E> {
-  final E error;
 
   const Failure(this.error);
+  final E error;
 
   @override
   bool operator ==(Object other) =>

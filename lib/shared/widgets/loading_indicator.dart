@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 class LoadingIndicator extends StatelessWidget {
-  final String? message;
 
   const LoadingIndicator({
     super.key,
     this.message,
   });
+  final String? message;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +24,7 @@ class LoadingIndicator extends StatelessWidget {
             Text(
               message!,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
           ],
@@ -35,16 +35,14 @@ class LoadingIndicator extends StatelessWidget {
 }
 
 class LoadingOverlay extends StatelessWidget {
+
+  const LoadingOverlay({
+    required this.isLoading, required this.child, super.key,
+    this.message,
+  });
   final bool isLoading;
   final Widget child;
   final String? message;
-
-  const LoadingOverlay({
-    super.key,
-    required this.isLoading,
-    required this.child,
-    this.message,
-  });
 
   @override
   Widget build(BuildContext context) {

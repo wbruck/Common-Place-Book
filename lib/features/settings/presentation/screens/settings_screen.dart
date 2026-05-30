@@ -5,7 +5,6 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -27,10 +26,10 @@ class SettingsScreen extends StatelessWidget {
 
           // About section
           _buildSectionHeader(context, 'About'),
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: const Text('Version'),
-            subtitle: const Text('1.0.0'),
+          const ListTile(
+            leading: Icon(Icons.info_outline),
+            title: Text('Version'),
+            subtitle: Text('1.0.0'),
           ),
           ListTile(
             leading: const Icon(Icons.book_outlined),
@@ -42,22 +41,22 @@ class SettingsScreen extends StatelessWidget {
 
           // Data section
           _buildSectionHeader(context, 'Data'),
-          ListTile(
-            leading: const Icon(Icons.upload_outlined),
-            title: const Text('Export entries'),
-            subtitle: const Text('Coming soon'),
+          const ListTile(
+            leading: Icon(Icons.upload_outlined),
+            title: Text('Export entries'),
+            subtitle: Text('Coming soon'),
             enabled: false,
           ),
-          ListTile(
-            leading: const Icon(Icons.download_outlined),
-            title: const Text('Import entries'),
-            subtitle: const Text('Coming soon'),
+          const ListTile(
+            leading: Icon(Icons.download_outlined),
+            title: Text('Import entries'),
+            subtitle: Text('Coming soon'),
             enabled: false,
           ),
-          ListTile(
-            leading: const Icon(Icons.cloud_outlined),
-            title: const Text('Cloud sync'),
-            subtitle: const Text('Coming in a future update'),
+          const ListTile(
+            leading: Icon(Icons.cloud_outlined),
+            title: Text('Cloud sync'),
+            subtitle: Text('Coming in a future update'),
             enabled: false,
           ),
         ],
@@ -78,7 +77,7 @@ class SettingsScreen extends StatelessWidget {
   }
 
   void _showThemeSelector(BuildContext context) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       builder: (context) => SafeArea(
         child: Column(
@@ -107,7 +106,7 @@ class SettingsScreen extends StatelessWidget {
   }
 
   void _showAboutDialog(BuildContext context) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: Row(

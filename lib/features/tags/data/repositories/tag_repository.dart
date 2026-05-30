@@ -1,13 +1,13 @@
 import '../../../entries/domain/entities/entry_entity.dart';
 
 class TagWithEntryCount {
-  final TagEntity tag;
-  final int entryCount;
 
   const TagWithEntryCount({
     required this.tag,
     required this.entryCount,
   });
+  final TagEntity tag;
+  final int entryCount;
 }
 
 abstract class TagRepository {

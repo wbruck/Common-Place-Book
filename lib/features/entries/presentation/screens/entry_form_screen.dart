@@ -11,12 +11,12 @@ import '../bloc/entries_list_cubit.dart';
 import '../bloc/entry_form_cubit.dart';
 
 class EntryFormScreen extends StatefulWidget {
-  final String? entryId;
 
   const EntryFormScreen({
     super.key,
     this.entryId,
   });
+  final String? entryId;
 
   @override
   State<EntryFormScreen> createState() => _EntryFormScreenState();
@@ -231,6 +231,7 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
     );
 
     if (result != null && result.trim().isNotEmpty) {
+      if (!context.mounted) return;
       final tagsCubit = context.read<TagsCubit>();
       final tag = await tagsCubit.createTag(name: result.trim());
       if (tag != null) {
@@ -240,8 +241,8 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
   }
 
   void _handleClose(BuildContext context, EntryFormReady? formState) {
-    if (formState?.hasChanges == true) {
-      showDialog(
+    if (formState?.hasChanges ?? false) {
+      showDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Discard changes?'),

@@ -18,10 +18,6 @@ class DiscoveryLoading extends DiscoveryState {
 }
 
 class DiscoveryLoaded extends DiscoveryState {
-  final EntryEntity entry;
-  final List<EntryEntity> relatedEntries;
-  final String? filterTagId;
-  final List<EntryEntity> history;
 
   const DiscoveryLoaded({
     required this.entry,
@@ -29,6 +25,10 @@ class DiscoveryLoaded extends DiscoveryState {
     this.filterTagId,
     this.history = const [],
   });
+  final EntryEntity entry;
+  final List<EntryEntity> relatedEntries;
+  final String? filterTagId;
+  final List<EntryEntity> history;
 
   DiscoveryLoaded copyWith({
     EntryEntity? entry,
@@ -46,28 +46,28 @@ class DiscoveryLoaded extends DiscoveryState {
 }
 
 class DiscoveryEmpty extends DiscoveryState {
-  final String? filterTagId;
 
   const DiscoveryEmpty({this.filterTagId});
+  final String? filterTagId;
 }
 
 class DiscoveryError extends DiscoveryState {
-  final String message;
 
   const DiscoveryError(this.message);
+  final String message;
 }
 
 // ============ Cubit ============
 
 class DiscoveryCubit extends Cubit<DiscoveryState> {
-  final EntryRepository _entryRepository;
-  final List<EntryEntity> _history = [];
-  String? _currentFilterTagId;
 
   DiscoveryCubit({
     required EntryRepository entryRepository,
   })  : _entryRepository = entryRepository,
         super(const DiscoveryInitial());
+  final EntryRepository _entryRepository;
+  final List<EntryEntity> _history = [];
+  String? _currentFilterTagId;
 
   Future<void> loadRandomEntry() async {
     emit(const DiscoveryLoading());
@@ -103,8 +103,8 @@ class DiscoveryCubit extends Cubit<DiscoveryState> {
         relatedEntries: relatedEntries,
         filterTagId: _currentFilterTagId,
         history: List.from(_history),
-      ));
-    } catch (e) {
+      ),);
+    } on Object catch (e) {
       emit(DiscoveryError('Failed to load random entry: $e'));
     }
   }
@@ -147,13 +147,13 @@ class DiscoveryCubit extends Cubit<DiscoveryState> {
         relatedEntries: relatedEntries,
         filterTagId: _currentFilterTagId,
         history: List.from(_history),
-      ));
-    } catch (e) {
+      ),);
+    } on Object {
       emit(DiscoveryLoaded(
         entry: entry,
         filterTagId: _currentFilterTagId,
         history: List.from(_history),
-      ));
+      ),);
     }
   }
 }

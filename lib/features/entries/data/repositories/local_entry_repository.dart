@@ -1,21 +1,21 @@
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../../core/database/database.dart';
 import '../../../../core/database/daos/entries_dao.dart';
+import '../../../../core/database/database.dart';
 import '../../domain/entities/entry_entity.dart';
 import '../mappers/entry_mapper.dart';
 import 'entry_repository.dart';
 
 class LocalEntryRepository implements EntryRepository {
-  final AppDatabase _database;
-  final Uuid _uuid = const Uuid();
-
-  late final EntriesDao _entriesDao;
 
   LocalEntryRepository({required AppDatabase database}) : _database = database {
     _entriesDao = EntriesDao(_database);
   }
+  final AppDatabase _database;
+  final Uuid _uuid = const Uuid();
+
+  late final EntriesDao _entriesDao;
 
   @override
   Future<EntryEntity> createEntry({
