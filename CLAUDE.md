@@ -23,7 +23,7 @@ dart run build_runner watch
 flutter run
 
 # Run on specific platform
-flutter run -d chrome        # Web (requires CORS headers, see below)
+flutter run -d chrome        # Web (no CORS headers needed, see below)
 flutter run -d macos         # macOS
 flutter run -d android       # Android
 flutter run -d ios           # iOS
@@ -48,20 +48,37 @@ dart run build_runner build --delete-conflicting-outputs
 ```
 
 ### Web Database Setup
-This project uses **drift's sql.js with IndexedDB storage** for the web platform:
+This project uses **drift's WebAssembly (WASM) backend via `WasmDatabase.open`** for the web platform (see `lib/core/database/connection/web.dart`). Storage is durable: drift picks **OPFS** when the page is cross-origin isolated, otherwise **IndexedDB**.
+
+> Migrated away from the legacy `WebDatabase` (sql.js) backend. That backend serialized the whole DB into a single `localStorage` key, which has a ~5MB cap and silently dropped writes on `QuotaExceededError`, losing data on reload.
 
 **Required files in `web/` directory:**
-- `sql-wasm.js` - SQL.js JavaScript library
-- `sql-wasm.wasm` - SQL.js WebAssembly module
+- `sqlite3.wasm` - sqlite3 compiled to WebAssembly.
+- `drift_worker.js` - drift web worker (compiled from `package:drift`).
 
-These files are downloaded from [sql.js CDN](https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/) and should already be in the repository.
+**How to (re)generate these assets** — they must match the `drift` and `sqlite3` versions in `pubspec.lock`:
 
-**Why sql.js + IndexedDB?**
-- Simpler than WASM SQLite with drift workers
-- No CORS headers required
-- Full SQL support via sql.js
-- Data persists in browser's IndexedDB
-- Works reliably across all modern browsers
+```bash
+# 1. Compile the drift worker that ships with the drift package to JS.
+#    (Look up the resolved drift version, e.g. 2.31.0, and copy its worker entrypoint.)
+DRIFT_DIR=$(find ~/.pub-cache -maxdepth 3 -type d -name 'drift-*' | sort | tail -1)
+mkdir -p tool/web && cp "$DRIFT_DIR/web/drift_worker.dart" tool/web/drift_worker.dart
+dart compile js -O4 -o web/drift_worker.js tool/web/drift_worker.dart
+rm -rf tool/web web/drift_worker.js.deps web/drift_worker.js.map
+
+# 2. Download sqlite3.wasm matching the `sqlite3` package version in pubspec.lock
+#    (e.g. sqlite3 2.9.4) from the sqlite3.dart GitHub releases:
+curl -L -o web/sqlite3.wasm \
+  "https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-2.9.4/sqlite3.wasm"
+```
+
+**Cloudflare Pages**: `web/_headers` sets `Content-Type: application/wasm` for `*.wasm` so the WASM instantiates. COOP/COEP headers (needed for the OPFS upgrade) are present but commented out, because cross-origin isolation can break non-CORS third-party assets. IndexedDB persistence works without them.
+
+**Why WASM + IndexedDB/OPFS?**
+- Supported, non-deprecated drift 2.31 web path.
+- Durable persistence with no quota cliff (unlike `localStorage`).
+- No CORS/COOP/COEP headers required for the IndexedDB tier.
+- Real sqlite3 (full SQL) running in a web worker.
 
 ## Architecture
 
@@ -111,7 +128,7 @@ lib/features/<feature>/
 - `settings` - Key-value configuration storage
 
 **Important**:
-- Default categories are seeded on first run (see database.dart:98-136)
+- Default categories are seeded on first run (see `_seedDefaultCategories` in database.dart)
 - EntryTags uses ON DELETE CASCADE (schema v2)
 - All IDs are UUIDs stored as text
 

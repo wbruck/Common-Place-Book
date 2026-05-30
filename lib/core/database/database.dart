@@ -68,6 +68,11 @@ class Settings extends Table {
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
+  /// Creates a database backed by the given [executor]. Intended for tests,
+  /// where an in-memory executor (e.g. `NativeDatabase.memory()`) is supplied
+  /// instead of the platform connection.
+  AppDatabase.forTesting(super.executor);
+
   @override
   int get schemaVersion => 2;
 
@@ -91,6 +96,13 @@ class AppDatabase extends _$AppDatabase {
           // The cascade constraints are enforced on new databases.
           // For existing databases, the manual deletion in DAOs handles cleanup.
         }
+      },
+      beforeOpen: (details) async {
+        // Enable foreign-key enforcement so the ON DELETE CASCADE constraints
+        // on EntryTags are actually active (SQLite defaults this OFF per
+        // connection). PRAGMA does not validate pre-existing rows, so this is
+        // safe to turn on for existing databases.
+        await customStatement('PRAGMA foreign_keys = ON');
       },
     );
   }

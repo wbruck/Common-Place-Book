@@ -72,15 +72,8 @@ See [PROJECT_PLAN.md](./PROJECT_PLAN.md) for the complete project plan including
 
 ## Roadmap
 
-- [x] Project planning and documentation
-- [ ] Phase 1: Foundation (MVP)
-- [ ] Phase 2: Discovery & Organization
 - [ ] Phase 3: Polish & Delight
 - [ ] Phase 4: Cloud & Sync
-
-## License
-
-MIT License - see LICENSE file for details.
 
 ---
 

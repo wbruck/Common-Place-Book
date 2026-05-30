@@ -1,0 +1,20 @@
+# Cloudflare Pages headers for the Common Place Book web build.
+#
+# Ensure WebAssembly is served with the correct MIME type so the browser can
+# stream-compile it. Without this, WASM instantiation can fail.
+/*.wasm
+  Content-Type: application/wasm
+
+# OPFS (the most durable drift storage) requires the page to be cross-origin
+# isolated, which needs the two headers below. They are intentionally left
+# COMMENTED OUT: enabling cross-origin isolation can break loading of non-CORS
+# third-party assets (fonts, images, analytics, etc.). drift falls back to
+# durable IndexedDB persistence without them, which already satisfies the
+# "survives reload" requirement.
+#
+# To opt into OPFS later (after confirming all third-party assets send CORS
+# headers), uncomment these and pass `moveExistingIndexedDbToOpfs: true` to
+# WasmDatabase.open in lib/core/database/connection/web.dart:
+#/*
+#  Cross-Origin-Opener-Policy: same-origin
+#  Cross-Origin-Embedder-Policy: require-corp
