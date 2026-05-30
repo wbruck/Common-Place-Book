@@ -2,6 +2,17 @@ import 'package:flutter/foundation.dart';
 
 @immutable
 class EntryEntity {
+
+  const EntryEntity({
+    required this.id,
+    required this.content,
+    required this.createdAt, required this.updatedAt, this.source,
+    this.categoryId,
+    this.lastViewedAt,
+    this.viewCount = 0,
+    this.isFavorite = false,
+    this.tags = const [],
+  });
   final String id;
   final String content;
   final String? source;
@@ -12,19 +23,6 @@ class EntryEntity {
   final int viewCount;
   final bool isFavorite;
   final List<TagEntity> tags;
-
-  const EntryEntity({
-    required this.id,
-    required this.content,
-    this.source,
-    this.categoryId,
-    required this.createdAt,
-    required this.updatedAt,
-    this.lastViewedAt,
-    this.viewCount = 0,
-    this.isFavorite = false,
-    this.tags = const [],
-  });
 
   EntryEntity copyWith({
     String? id,
@@ -93,17 +91,16 @@ class EntryEntity {
 
 @immutable
 class TagEntity {
-  final String id;
-  final String name;
-  final String? color;
-  final DateTime createdAt;
 
   const TagEntity({
     required this.id,
     required this.name,
-    this.color,
-    required this.createdAt,
+    required this.createdAt, this.color,
   });
+  final String id;
+  final String name;
+  final String? color;
+  final DateTime createdAt;
 
   TagEntity copyWith({
     String? id,
@@ -139,19 +136,18 @@ class TagEntity {
 
 @immutable
 class CategoryEntity {
+
+  const CategoryEntity({
+    required this.id,
+    required this.name,
+    required this.createdAt, this.parentId,
+    this.icon,
+  });
   final String id;
   final String name;
   final String? parentId;
   final String? icon;
   final DateTime createdAt;
-
-  const CategoryEntity({
-    required this.id,
-    required this.name,
-    this.parentId,
-    this.icon,
-    required this.createdAt,
-  });
 
   CategoryEntity copyWith({
     String? id,

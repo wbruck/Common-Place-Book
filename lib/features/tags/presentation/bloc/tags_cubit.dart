@@ -18,9 +18,9 @@ class TagsLoading extends TagsState {
 }
 
 class TagsLoaded extends TagsState {
-  final List<TagWithEntryCount> tagsWithCounts;
 
   const TagsLoaded({required this.tagsWithCounts});
+  final List<TagWithEntryCount> tagsWithCounts;
 
   List<TagEntity> get tags => tagsWithCounts.map((t) => t.tag).toList();
 }
@@ -30,20 +30,20 @@ class TagsEmpty extends TagsState {
 }
 
 class TagsError extends TagsState {
-  final String message;
 
   const TagsError(this.message);
+  final String message;
 }
 
 // ============ Cubit ============
 
 class TagsCubit extends Cubit<TagsState> {
-  final TagRepository _tagRepository;
 
   TagsCubit({
     required TagRepository tagRepository,
   })  : _tagRepository = tagRepository,
         super(const TagsInitial());
+  final TagRepository _tagRepository;
 
   Future<void> loadTags() async {
     emit(const TagsLoading());
@@ -56,7 +56,7 @@ class TagsCubit extends Cubit<TagsState> {
       } else {
         emit(TagsLoaded(tagsWithCounts: tagsWithCounts));
       }
-    } catch (e) {
+    } on Object catch (e) {
       emit(TagsError('Failed to load tags: $e'));
     }
   }
@@ -81,7 +81,7 @@ class TagsCubit extends Cubit<TagsState> {
       await loadTags();
 
       return tag;
-    } catch (e) {
+    } on Object catch (e) {
       emit(TagsError('Failed to create tag: $e'));
       return null;
     }
@@ -100,7 +100,7 @@ class TagsCubit extends Cubit<TagsState> {
       );
 
       await loadTags();
-    } catch (e) {
+    } on Object catch (e) {
       emit(TagsError('Failed to update tag: $e'));
     }
   }
@@ -109,7 +109,7 @@ class TagsCubit extends Cubit<TagsState> {
     try {
       await _tagRepository.deleteTag(id);
       await loadTags();
-    } catch (e) {
+    } on Object catch (e) {
       emit(TagsError('Failed to delete tag: $e'));
     }
   }
@@ -119,7 +119,7 @@ class TagsCubit extends Cubit<TagsState> {
       final tags = await _tagRepository.getOrCreateTags(tagNames);
       await loadTags(); // Refresh the list
       return tags;
-    } catch (e) {
+    } on Object catch (e) {
       emit(TagsError('Failed to get or create tags: $e'));
       return [];
     }
@@ -128,7 +128,7 @@ class TagsCubit extends Cubit<TagsState> {
   Future<List<TagEntity>> searchTags(String query) async {
     try {
       return await _tagRepository.searchTags(query);
-    } catch (e) {
+    } on Object {
       return [];
     }
   }

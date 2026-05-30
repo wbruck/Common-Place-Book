@@ -5,6 +5,8 @@ class DatabaseProvider {
 
   static AppDatabase? _database;
 
+  // Named lifecycle method (paired with close()); intentionally not a setter.
+  // ignore: use_setters_to_change_properties
   static void initialize(AppDatabase database) {
     _database = database;
   }

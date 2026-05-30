@@ -1,11 +1,11 @@
 import 'package:go_router/go_router.dart';
 
+import '../features/discovery/presentation/screens/discovery_screen.dart';
 import '../features/entries/presentation/screens/entry_detail_screen.dart';
 import '../features/entries/presentation/screens/entry_form_screen.dart';
 import '../features/entries/presentation/screens/home_screen.dart';
-import '../features/discovery/presentation/screens/discovery_screen.dart';
-import '../features/tags/presentation/screens/tags_screen.dart';
 import '../features/settings/presentation/screens/settings_screen.dart';
+import '../features/tags/presentation/screens/tags_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',

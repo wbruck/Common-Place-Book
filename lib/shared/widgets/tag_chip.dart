@@ -4,26 +4,25 @@ import '../../app/theme/colors.dart';
 import '../../features/entries/domain/entities/entry_entity.dart';
 
 class TagChip extends StatelessWidget {
+
+  const TagChip({
+    required this.tag, super.key,
+    this.selected = false,
+    this.small = false,
+    this.onTap,
+    this.onDeleted,
+  });
   final TagEntity tag;
   final bool selected;
   final bool small;
   final VoidCallback? onTap;
   final VoidCallback? onDeleted;
 
-  const TagChip({
-    super.key,
-    required this.tag,
-    this.selected = false,
-    this.small = false,
-    this.onTap,
-    this.onDeleted,
-  });
-
   Color _getTagColor() {
     if (tag.color != null) {
       try {
         return Color(int.parse(tag.color!.replaceFirst('#', '0xFF')));
-      } catch (_) {
+      } on Object catch (_) {
         // Fall through to default color
       }
     }
@@ -41,7 +40,7 @@ class TagChip extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         decoration: BoxDecoration(
-          color: tagColor.withOpacity(0.1),
+          color: tagColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
@@ -59,10 +58,10 @@ class TagChip extends StatelessWidget {
       selected: selected,
       onSelected: onTap != null ? (_) => onTap!() : null,
       onDeleted: onDeleted,
-      backgroundColor: tagColor.withOpacity(0.1),
-      selectedColor: tagColor.withOpacity(0.25),
+      backgroundColor: tagColor.withValues(alpha: 0.1),
+      selectedColor: tagColor.withValues(alpha: 0.25),
       labelStyle: TextStyle(
-        color: selected ? tagColor : tagColor.withOpacity(0.9),
+        color: selected ? tagColor : tagColor.withValues(alpha: 0.9),
         fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
         fontSize: 13,
       ),
@@ -77,22 +76,18 @@ class TagChip extends StatelessWidget {
 }
 
 class TagSelector extends StatelessWidget {
+
+  const TagSelector({
+    required this.availableTags, required this.selectedTagIds, required this.onTagSelected, required this.onTagDeselected, super.key,
+    this.onCreateTag,
+    this.loading = false,
+  });
   final List<TagEntity> availableTags;
   final List<String> selectedTagIds;
   final ValueChanged<String> onTagSelected;
   final ValueChanged<String> onTagDeselected;
   final VoidCallback? onCreateTag;
   final bool loading;
-
-  const TagSelector({
-    super.key,
-    required this.availableTags,
-    required this.selectedTagIds,
-    required this.onTagSelected,
-    required this.onTagDeselected,
-    this.onCreateTag,
-    this.loading = false,
-  });
 
   @override
   Widget build(BuildContext context) {
@@ -129,7 +124,7 @@ class TagSelector extends StatelessWidget {
             onPressed: onCreateTag,
             backgroundColor: theme.colorScheme.surface,
             side: BorderSide(
-              color: theme.colorScheme.outline.withOpacity(0.3),
+              color: theme.colorScheme.outline.withValues(alpha: 0.3),
             ),
           ),
       ],

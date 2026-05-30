@@ -5,13 +5,13 @@ import '../database.dart';
 part 'tags_dao.g.dart';
 
 class TagWithCount {
-  final Tag tag;
-  final int entryCount;
 
   const TagWithCount({
     required this.tag,
     required this.entryCount,
   });
+  final Tag tag;
+  final int entryCount;
 }
 
 @DriftAccessor(tables: [Tags, EntryTags])
@@ -143,7 +143,7 @@ class TagsDao extends DatabaseAccessor<AppDatabase> with _$TagsDaoMixin {
     for (final name in tagNames) {
       var tag = await getTagByName(name);
       if (tag == null) {
-        final id = name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-');
+        final id = name.toLowerCase().replaceAll(RegExp('[^a-z0-9]'), '-');
         tag = await createTag(id: id, name: name);
       }
       results.add(tag);

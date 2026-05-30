@@ -18,13 +18,13 @@ class EntryDetailLoading extends EntryDetailState {
 }
 
 class EntryDetailLoaded extends EntryDetailState {
-  final EntryEntity entry;
-  final List<EntryEntity> relatedEntries;
 
   const EntryDetailLoaded({
     required this.entry,
     this.relatedEntries = const [],
   });
+  final EntryEntity entry;
+  final List<EntryEntity> relatedEntries;
 
   EntryDetailLoaded copyWith({
     EntryEntity? entry,
@@ -42,22 +42,22 @@ class EntryDetailNotFound extends EntryDetailState {
 }
 
 class EntryDetailError extends EntryDetailState {
-  final String message;
 
   const EntryDetailError(this.message);
+  final String message;
 }
 
 // ============ Cubit ============
 
 class EntryDetailCubit extends Cubit<EntryDetailState> {
-  final EntryRepository _entryRepository;
-  final String entryId;
 
   EntryDetailCubit({
     required EntryRepository entryRepository,
     required this.entryId,
   })  : _entryRepository = entryRepository,
         super(const EntryDetailInitial());
+  final EntryRepository _entryRepository;
+  final String entryId;
 
   Future<void> loadEntry() async {
     emit(const EntryDetailLoading());
@@ -85,8 +85,8 @@ class EntryDetailCubit extends Cubit<EntryDetailState> {
       emit(EntryDetailLoaded(
         entry: updatedEntry ?? entry,
         relatedEntries: relatedEntries,
-      ));
-    } catch (e) {
+      ),);
+    } on Object catch (e) {
       emit(EntryDetailError('Failed to load entry: $e'));
     }
   }
@@ -104,8 +104,8 @@ class EntryDetailCubit extends Cubit<EntryDetailState> {
 
       emit(currentState.copyWith(
         entry: currentState.entry.copyWith(isFavorite: newFavoriteStatus),
-      ));
-    } catch (e) {
+      ),);
+    } on Object catch (e) {
       emit(EntryDetailError('Failed to update favorite status: $e'));
     }
   }
@@ -114,7 +114,7 @@ class EntryDetailCubit extends Cubit<EntryDetailState> {
     try {
       await _entryRepository.deleteEntry(entryId);
       emit(const EntryDetailNotFound());
-    } catch (e) {
+    } on Object catch (e) {
       emit(EntryDetailError('Failed to delete entry: $e'));
     }
   }

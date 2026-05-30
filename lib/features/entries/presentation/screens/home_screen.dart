@@ -6,11 +6,11 @@ import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/entry_card.dart';
 import '../../../../shared/widgets/error_display.dart';
 import '../../../../shared/widgets/loading_indicator.dart';
+import '../../../discovery/presentation/bloc/discovery_cubit.dart';
 import '../../../tags/presentation/bloc/tags_cubit.dart';
 import '../../data/repositories/entry_repository.dart';
 import '../../domain/entities/entry_entity.dart';
 import '../bloc/entries_list_cubit.dart';
-import '../../../discovery/presentation/bloc/discovery_cubit.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -36,10 +36,12 @@ class _HomeScreenState extends State<HomeScreen> {
     super.didChangeDependencies();
     if (!_initialized) {
       _initialized = true;
+      final entriesCubit = context.read<EntriesListCubit>();
+      final tagsCubit = context.read<TagsCubit>();
       // Load data after the widget tree is built and database is ready
       Future.microtask(() {
-        context.read<EntriesListCubit>().loadEntries();
-        context.read<TagsCubit>().loadTags();
+        entriesCubit.loadEntries();
+        tagsCubit.loadTags();
         _discoveryCubit.loadRandomEntry();
       });
     }
@@ -185,13 +187,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         Icon(
                           Icons.lightbulb_outline,
                           size: 48,
-                          color: theme.colorScheme.secondary.withOpacity(0.5),
+                          color: theme.colorScheme.secondary.withValues(alpha: 0.5),
                         ),
                         const SizedBox(height: 16),
                         Text(
                           'Add your first entry to see wisdom here',
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.6),
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -327,7 +329,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Text(
                         'Tags will appear here once you add entries with tags',
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                       ),
                     ),
@@ -349,7 +351,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.surfaceVariant,
+                            color: theme.colorScheme.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -388,9 +390,9 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class EntrySearchDelegate extends SearchDelegate<EntryEntity?> {
-  final EntryRepository entryRepository;
 
   EntrySearchDelegate({required this.entryRepository});
+  final EntryRepository entryRepository;
 
   @override
   String get searchFieldLabel => 'Search entries...';
@@ -426,7 +428,7 @@ class EntrySearchDelegate extends SearchDelegate<EntryEntity?> {
         child: Text(
           'Search your wisdom...',
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
               ),
         ),
       );

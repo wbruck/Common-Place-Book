@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 
 class ErrorDisplay extends StatelessWidget {
-  final String message;
-  final VoidCallback? onRetry;
 
   const ErrorDisplay({
-    super.key,
-    required this.message,
+    required this.message, super.key,
     this.onRetry,
   });
+  final String message;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -23,13 +22,13 @@ class ErrorDisplay extends StatelessWidget {
             Icon(
               Icons.error_outline,
               size: 32,
-              color: theme.colorScheme.error.withOpacity(0.7),
+              color: theme.colorScheme.error.withValues(alpha: 0.7),
             ),
             const SizedBox(height: 12),
             Text(
               'Something went wrong',
               style: theme.textTheme.titleSmall?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.8),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
               ),
               textAlign: TextAlign.center,
             ),
@@ -37,7 +36,7 @@ class ErrorDisplay extends StatelessWidget {
             Text(
               message,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
               textAlign: TextAlign.center,
               maxLines: 3,

@@ -10,16 +10,13 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      colorScheme: ColorScheme.light(
+      colorScheme: const ColorScheme.light(
         primary: AppColors.primary,
-        onPrimary: Colors.white,
         secondary: AppColors.accent,
         onSecondary: Colors.white,
-        surface: AppColors.surface,
         onSurface: AppColors.textPrimary,
         surfaceContainerHighest: AppColors.background,
         error: AppColors.error,
-        onError: Colors.white,
       ),
       scaffoldBackgroundColor: AppColors.background,
       appBarTheme: AppBarTheme(
@@ -66,15 +63,15 @@ class AppTheme {
         fillColor: AppColors.surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.border),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.border),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.primary, width: 2),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
@@ -86,7 +83,7 @@ class AppTheme {
         ),
       ),
       textTheme: _buildTextTheme(Brightness.light),
-      dividerTheme: DividerThemeData(
+      dividerTheme: const DividerThemeData(
         color: AppColors.divider,
         thickness: 1,
       ),
@@ -97,7 +94,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      colorScheme: ColorScheme.dark(
+      colorScheme: const ColorScheme.dark(
         primary: AppColors.primaryDark,
         onPrimary: Colors.white,
         secondary: AppColors.accentDark,
@@ -105,7 +102,6 @@ class AppTheme {
         surface: AppColors.surfaceDark,
         onSurface: AppColors.textPrimaryDark,
         surfaceContainerHighest: AppColors.backgroundDark,
-        error: AppColors.errorDark,
         onError: Colors.white,
       ),
       scaffoldBackgroundColor: AppColors.backgroundDark,
@@ -153,15 +149,15 @@ class AppTheme {
         fillColor: AppColors.surfaceDark,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.borderDark),
+          borderSide: const BorderSide(color: AppColors.borderDark),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.borderDark),
+          borderSide: const BorderSide(color: AppColors.borderDark),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.primaryDark, width: 2),
+          borderSide: const BorderSide(color: AppColors.primaryDark, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
@@ -173,7 +169,7 @@ class AppTheme {
         ),
       ),
       textTheme: _buildTextTheme(Brightness.dark),
-      dividerTheme: DividerThemeData(
+      dividerTheme: const DividerThemeData(
         color: AppColors.dividerDark,
         thickness: 1,
       ),
@@ -181,10 +177,10 @@ class AppTheme {
   }
 
   static TextTheme _buildTextTheme(Brightness brightness) {
-    final bool isDark = brightness == Brightness.dark;
-    final Color textPrimary =
+    final isDark = brightness == Brightness.dark;
+    final textPrimary =
         isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
-    final Color textSecondary =
+    final textSecondary =
         isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
 
     return TextTheme(

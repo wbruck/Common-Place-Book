@@ -14,12 +14,11 @@ import '../bloc/entries_list_cubit.dart';
 import '../bloc/entry_detail_cubit.dart';
 
 class EntryDetailScreen extends StatefulWidget {
-  final String entryId;
 
   const EntryDetailScreen({
-    super.key,
-    required this.entryId,
+    required this.entryId, super.key,
   });
+  final String entryId;
 
   @override
   State<EntryDetailScreen> createState() => _EntryDetailScreenState();
@@ -143,7 +142,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
               child: Icon(
                 Icons.format_quote,
                 size: 40,
-                color: theme.colorScheme.secondary.withOpacity(0.4),
+                color: theme.colorScheme.secondary.withValues(alpha: 0.4),
               ),
             ),
             const SizedBox(height: 24),
@@ -167,7 +166,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                 child: Text(
                   '— ${entry.source}',
                   style: theme.textTheme.titleMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                 ),
               ),
@@ -256,19 +255,19 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
         Icon(
           icon,
           size: 16,
-          color: theme.colorScheme.onSurface.withOpacity(0.5),
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
         ),
         const SizedBox(width: 8),
         Text(
           '$label: ',
           style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withOpacity(0.5),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
           ),
         ),
         Text(
           value,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withOpacity(0.7),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
           ),
         ),
       ],
@@ -307,7 +306,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   }
 
   void _confirmDelete(BuildContext context) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete entry?'),

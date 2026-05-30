@@ -1,20 +1,20 @@
 import 'package:uuid/uuid.dart';
 
-import '../../../../core/database/database.dart';
 import '../../../../core/database/daos/tags_dao.dart';
+import '../../../../core/database/database.dart';
 import '../../../entries/data/mappers/entry_mapper.dart';
 import '../../../entries/domain/entities/entry_entity.dart';
 import 'tag_repository.dart';
 
 class LocalTagRepository implements TagRepository {
-  final AppDatabase _database;
-  final Uuid _uuid = const Uuid();
-
-  late final TagsDao _tagsDao;
 
   LocalTagRepository({required AppDatabase database}) : _database = database {
     _tagsDao = TagsDao(_database);
   }
+  final AppDatabase _database;
+  final Uuid _uuid = const Uuid();
+
+  late final TagsDao _tagsDao;
 
   @override
   Future<TagEntity> createTag({

@@ -18,12 +18,6 @@ class EntryFormLoading extends EntryFormState {
 }
 
 class EntryFormReady extends EntryFormState {
-  final String content;
-  final String source;
-  final String? categoryId;
-  final List<String> tagIds;
-  final bool isEditing;
-  final String? existingEntryId;
 
   const EntryFormReady({
     this.content = '',
@@ -33,6 +27,12 @@ class EntryFormReady extends EntryFormState {
     this.isEditing = false,
     this.existingEntryId,
   });
+  final String content;
+  final String source;
+  final String? categoryId;
+  final List<String> tagIds;
+  final bool isEditing;
+  final String? existingEntryId;
 
   EntryFormReady copyWith({
     String? content,
@@ -66,26 +66,26 @@ class EntryFormSaving extends EntryFormState {
 }
 
 class EntryFormSaved extends EntryFormState {
-  final EntryEntity entry;
 
   const EntryFormSaved(this.entry);
+  final EntryEntity entry;
 }
 
 class EntryFormError extends EntryFormState {
-  final String message;
 
   const EntryFormError(this.message);
+  final String message;
 }
 
 // ============ Cubit ============
 
 class EntryFormCubit extends Cubit<EntryFormState> {
-  final EntryRepository _entryRepository;
 
   EntryFormCubit({
     required EntryRepository entryRepository,
   })  : _entryRepository = entryRepository,
         super(const EntryFormInitial());
+  final EntryRepository _entryRepository;
 
   void initNewEntry() {
     emit(const EntryFormReady());
@@ -108,8 +108,8 @@ class EntryFormCubit extends Cubit<EntryFormState> {
         tagIds: entry.tags.map((t) => t.id).toList(),
         isEditing: true,
         existingEntryId: entryId,
-      ));
-    } catch (e) {
+      ),);
+    } on Object catch (e) {
       emit(EntryFormError('Failed to load entry: $e'));
     }
   }
@@ -148,7 +148,7 @@ class EntryFormCubit extends Cubit<EntryFormState> {
       if (!currentState.tagIds.contains(tagId)) {
         emit(currentState.copyWith(
           tagIds: [...currentState.tagIds, tagId],
-        ));
+        ),);
       }
     }
   }
@@ -158,7 +158,7 @@ class EntryFormCubit extends Cubit<EntryFormState> {
     if (currentState is EntryFormReady) {
       emit(currentState.copyWith(
         tagIds: currentState.tagIds.where((id) => id != tagId).toList(),
-      ));
+      ),);
     }
   }
 
@@ -204,7 +204,7 @@ class EntryFormCubit extends Cubit<EntryFormState> {
       }
 
       emit(EntryFormSaved(entry));
-    } catch (e) {
+    } on Object catch (e) {
       emit(EntryFormError('Failed to save entry: $e'));
       emit(currentState);
     }

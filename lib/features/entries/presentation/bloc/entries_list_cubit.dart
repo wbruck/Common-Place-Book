@@ -18,17 +18,16 @@ class EntriesListLoading extends EntriesListState {
 }
 
 class EntriesListLoaded extends EntriesListState {
+
+  const EntriesListLoaded({
+    required this.entries,
+    required this.totalCount, this.filterTagId,
+    this.searchQuery,
+  });
   final List<EntryEntity> entries;
   final String? filterTagId;
   final String? searchQuery;
   final int totalCount;
-
-  const EntriesListLoaded({
-    required this.entries,
-    this.filterTagId,
-    this.searchQuery,
-    required this.totalCount,
-  });
 
   EntriesListLoaded copyWith({
     List<EntryEntity>? entries,
@@ -46,33 +45,33 @@ class EntriesListLoaded extends EntriesListState {
 }
 
 class EntriesListEmpty extends EntriesListState {
-  final String? filterTagId;
-  final String? searchQuery;
 
   const EntriesListEmpty({
     this.filterTagId,
     this.searchQuery,
   });
+  final String? filterTagId;
+  final String? searchQuery;
 }
 
 class EntriesListError extends EntriesListState {
-  final String message;
 
   const EntriesListError(this.message);
+  final String message;
 }
 
 // ============ Cubit ============
 
 class EntriesListCubit extends Cubit<EntriesListState> {
-  final EntryRepository _entryRepository;
-
-  String? _currentFilterTagId;
-  String? _currentSearchQuery;
 
   EntriesListCubit({
     required EntryRepository entryRepository,
   })  : _entryRepository = entryRepository,
         super(const EntriesListInitial());
+  final EntryRepository _entryRepository;
+
+  String? _currentFilterTagId;
+  String? _currentSearchQuery;
 
   Future<void> loadEntries() async {
     emit(const EntriesListLoading());
@@ -87,9 +86,9 @@ class EntriesListCubit extends Cubit<EntriesListState> {
         emit(EntriesListLoaded(
           entries: entries,
           totalCount: count,
-        ));
+        ),);
       }
-    } catch (e) {
+    } on Object catch (e) {
       emit(EntriesListError('Failed to load entries: $e'));
     }
   }
@@ -118,9 +117,9 @@ class EntriesListCubit extends Cubit<EntriesListState> {
           entries: entries,
           filterTagId: tagId,
           totalCount: count,
-        ));
+        ),);
       }
-    } catch (e) {
+    } on Object catch (e) {
       emit(EntriesListError('Failed to filter entries: $e'));
     }
   }
@@ -147,9 +146,9 @@ class EntriesListCubit extends Cubit<EntriesListState> {
           entries: entries,
           searchQuery: query,
           totalCount: count,
-        ));
+        ),);
       }
-    } catch (e) {
+    } on Object catch (e) {
       emit(EntriesListError('Failed to search entries: $e'));
     }
   }

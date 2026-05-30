@@ -12,7 +12,6 @@ class TagsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -54,7 +53,7 @@ class TagsScreen extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: tagColor.withOpacity(0.15),
+                      color: tagColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
@@ -111,7 +110,7 @@ class TagsScreen extends StatelessWidget {
     if (colorString != null) {
       try {
         return Color(int.parse(colorString.replaceFirst('#', '0xFF')));
-      } catch (_) {
+      } on Object catch (_) {
         // Fall through to default
       }
     }
@@ -164,7 +163,8 @@ class TagsScreen extends StatelessWidget {
     );
 
     if (result != null && result.trim().isNotEmpty) {
-      context.read<TagsCubit>().createTag(name: result.trim());
+      if (!context.mounted) return;
+      await context.read<TagsCubit>().createTag(name: result.trim());
     }
   }
 
@@ -203,7 +203,8 @@ class TagsScreen extends StatelessWidget {
     );
 
     if (result != null && result.trim().isNotEmpty && result != currentName) {
-      context.read<TagsCubit>().updateTag(id: tagId, name: result.trim());
+      if (!context.mounted) return;
+      await context.read<TagsCubit>().updateTag(id: tagId, name: result.trim());
     }
   }
 
@@ -212,7 +213,7 @@ class TagsScreen extends StatelessWidget {
     String tagId,
     String tagName,
   ) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete tag?'),

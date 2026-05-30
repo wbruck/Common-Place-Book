@@ -6,18 +6,17 @@ import '../../features/entries/domain/entities/entry_entity.dart';
 import 'tag_chip.dart';
 
 class EntryCard extends StatelessWidget {
-  final EntryEntity entry;
-  final VoidCallback? onTap;
-  final bool showTags;
-  final bool compact;
 
   const EntryCard({
-    super.key,
-    required this.entry,
+    required this.entry, super.key,
     this.onTap,
     this.showTags = true,
     this.compact = false,
   });
+  final EntryEntity entry;
+  final VoidCallback? onTap;
+  final bool showTags;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -73,7 +72,7 @@ class EntryCard extends StatelessWidget {
                       .map((tag) => TagChip(
                             tag: tag,
                             small: compact,
-                          ))
+                          ),)
                       .toList(),
                 ),
               ],
@@ -86,13 +85,13 @@ class EntryCard extends StatelessWidget {
                     Icon(
                       Icons.calendar_today_outlined,
                       size: 14,
-                      color: theme.colorScheme.onSurface.withOpacity(0.5),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
                     const SizedBox(width: 4),
                     Text(
                       dateFormat.format(entry.createdAt),
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.5),
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                       ),
                     ),
                     if (entry.isFavorite) ...[
@@ -115,16 +114,15 @@ class EntryCard extends StatelessWidget {
 }
 
 class LargeEntryCard extends StatelessWidget {
-  final EntryEntity entry;
-  final VoidCallback? onTap;
-  final VoidCallback? onShuffle;
 
   const LargeEntryCard({
-    super.key,
-    required this.entry,
+    required this.entry, super.key,
     this.onTap,
     this.onShuffle,
   });
+  final EntryEntity entry;
+  final VoidCallback? onTap;
+  final VoidCallback? onShuffle;
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +141,7 @@ class LargeEntryCard extends StatelessWidget {
               Icon(
                 Icons.format_quote,
                 size: 32,
-                color: theme.colorScheme.secondary.withOpacity(0.5),
+                color: theme.colorScheme.secondary.withValues(alpha: 0.5),
               ),
               const SizedBox(height: 16),
 
@@ -165,7 +163,7 @@ class LargeEntryCard extends StatelessWidget {
                 Text(
                   '— ${entry.source}',
                   style: theme.textTheme.titleSmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                   textAlign: TextAlign.center,
                 ),
