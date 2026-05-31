@@ -86,6 +86,77 @@ void _createV2Database(String path) {
   }
 }
 
+/// Writes the v1 schema and seed rows directly with the sqlite3 C library.
+/// v1 is identical to v2 except entry_tags has NO `ON DELETE CASCADE` on its
+/// foreign keys (cascade was added in v2). user_version is 1.
+void _createV1Database(String path) {
+  final db = sqlite3.sqlite3.open(path);
+  try {
+    db
+      ..execute('''
+        CREATE TABLE categories (
+          id TEXT NOT NULL PRIMARY KEY,
+          name TEXT NOT NULL,
+          parent_id TEXT REFERENCES categories (id),
+          icon TEXT,
+          created_at INTEGER NOT NULL
+        );
+      ''')
+      ..execute('''
+        CREATE TABLE entries (
+          id TEXT NOT NULL PRIMARY KEY,
+          content TEXT NOT NULL,
+          source TEXT,
+          category_id TEXT REFERENCES categories (id),
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          last_viewed_at INTEGER,
+          view_count INTEGER NOT NULL DEFAULT 0,
+          is_favorite INTEGER NOT NULL DEFAULT 0
+        );
+      ''')
+      ..execute('''
+        CREATE TABLE tags (
+          id TEXT NOT NULL PRIMARY KEY,
+          name TEXT NOT NULL UNIQUE,
+          color TEXT,
+          created_at INTEGER NOT NULL
+        );
+      ''')
+      // v1 entry_tags: composite primary key, no ON DELETE CASCADE.
+      ..execute('''
+        CREATE TABLE entry_tags (
+          entry_id TEXT NOT NULL REFERENCES entries (id),
+          tag_id TEXT NOT NULL REFERENCES tags (id),
+          PRIMARY KEY (entry_id, tag_id)
+        );
+      ''')
+      ..execute(
+        'INSERT INTO categories (id, name, icon, created_at) '
+        "VALUES ('philosophy', 'Philosophy', 'lightbulb', 1000);",
+      )
+      ..execute(
+        'INSERT INTO entries '
+        '(id, content, source, category_id, created_at, updated_at, '
+        'view_count, is_favorite) VALUES '
+        "('e1', 'First quote', 'Author A', 'philosophy', 1000, 1000, 3, 1), "
+        "('e2', 'Second quote', NULL, NULL, 2000, 2000, 0, 0);",
+      )
+      ..execute(
+        'INSERT INTO tags (id, name, color, created_at) VALUES '
+        "('t1', 'wisdom', '#ff0000', 1000), "
+        "('t2', 'life', NULL, 1000);",
+      )
+      ..execute(
+        'INSERT INTO entry_tags (entry_id, tag_id) VALUES '
+        "('e1', 't1'), ('e1', 't2'), ('e2', 't1');",
+      )
+      ..userVersion = 1;
+  } finally {
+    db.dispose();
+  }
+}
+
 void main() {
   late Directory tempDir;
   late File dbFile;
@@ -206,6 +277,53 @@ void main() {
       final remainingLinks = await db.select(db.entryTags).get();
       expect(remainingLinks.map((l) => l.entryId), everyElement('e2'));
       expect(remainingLinks.length, 1);
+    } finally {
+      await db.close();
+    }
+  });
+
+  test('v1 database upgrades to v3 with no data loss', () async {
+    _createV1Database(dbFile.path);
+
+    // Sanity check: the file really is at schema version 1 before drift opens.
+    final raw = sqlite3.sqlite3.open(dbFile.path);
+    expect(raw.userVersion, 1);
+    raw.dispose();
+
+    final db = AppDatabase.forTesting(NativeDatabase(dbFile));
+    try {
+      // Running a query triggers the v1 -> v3 onUpgrade (both the v1->v2 no-op
+      // branch and the v2->v3 sync-metadata branch).
+      expect(db.schemaVersion, 3);
+
+      final entries = await db.select(db.entries).get()
+        ..sort((a, b) => a.id.compareTo(b.id));
+      expect(entries.map((e) => e.id), ['e1', 'e2']);
+      for (final entry in entries) {
+        expect(entry.userId, isNull);
+        expect(entry.deletedAt, isNull);
+      }
+
+      final tags = await db.select(db.tags).get();
+      expect(tags.map((t) => t.id).toSet(), {'t1', 't2'});
+
+      final categories = await db.select(db.categories).get();
+      expect(categories.map((c) => c.id), contains('philosophy'));
+      for (final category in categories) {
+        expect(category.userId, isNull);
+        expect(category.deletedAt, isNull);
+      }
+
+      final links = await db.select(db.entryTags).get();
+      expect(links.length, 3);
+      for (final link in links) {
+        expect(link.id, isNotEmpty);
+        expect(link.userId, isNull);
+        expect(link.deletedAt, isNull);
+      }
+      expect(links.map((l) => l.id).toSet().length, 3);
+      final pairs = links.map((l) => '${l.entryId}:${l.tagId}').toSet();
+      expect(pairs, {'e1:t1', 'e1:t2', 'e2:t1'});
     } finally {
       await db.close();
     }

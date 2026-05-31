@@ -89,30 +89,6 @@ class TagsDao extends DatabaseAccessor<AppDatabase> with _$TagsDaoMixin {
         .get();
   }
 
-  Future<List<TagWithCount>> getAllTagsWithCounts() async {
-    final query = select(tags).join([
-      leftOuterJoin(
-        entryTags,
-        entryTags.tagId.equalsExp(tags.id) & entryTags.deletedAt.isNull(),
-      ),
-    ])
-      ..where(tags.deletedAt.isNull())
-      ..groupBy([tags.id])
-      ..orderBy([OrderingTerm.asc(tags.name)]);
-
-    final results = await query.get();
-
-    return results.map((row) {
-      final tag = row.readTable(tags);
-      // Count non-null entry associations
-      final entryId = row.readTableOrNull(entryTags)?.entryId;
-      return TagWithCount(
-        tag: tag,
-        entryCount: entryId != null ? 1 : 0,
-      );
-    }).toList();
-  }
-
   Future<List<TagWithCount>> getTagsWithEntryCounts() async {
     // This is a more accurate count query
     final tagsList = await getAllTags();
@@ -135,8 +111,17 @@ class TagsDao extends DatabaseAccessor<AppDatabase> with _$TagsDaoMixin {
 
   Future<int> _getEntryCountForTag(String tagId) async {
     final count = entryTags.entryId.count();
+    // Join entries so links pointing at soft-deleted entries are excluded
+    // (mirrors the live-link + live-entry filtering in EntriesDao queries).
     final query = selectOnly(entryTags)
       ..addColumns([count])
+      ..join([
+        innerJoin(
+          db.entries,
+          db.entries.id.equalsExp(entryTags.entryId) &
+              db.entries.deletedAt.isNull(),
+        ),
+      ])
       ..where(entryTags.tagId.equals(tagId) & entryTags.deletedAt.isNull());
     final result = await query.getSingle();
     return result.read(count) ?? 0;

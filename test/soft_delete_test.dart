@@ -9,6 +9,7 @@ import 'package:common_place_book/core/database/database.dart';
 import 'package:common_place_book/features/entries/data/repositories/local_entry_repository.dart';
 import 'package:common_place_book/features/entries/domain/entities/entry_entity.dart';
 import 'package:common_place_book/features/tags/data/repositories/local_tag_repository.dart';
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -138,6 +139,63 @@ void main() {
           .get();
       expect(links, isNotEmpty);
       expect(links.every((l) => l.deletedAt != null), isTrue);
+    });
+
+    test(
+        'partial tag removal tombstones only the dropped link, keeps the kept '
+        'one live', () async {
+      final a = await tags.createTag(name: 'A');
+      final b = await tags.createTag(name: 'B');
+      final entry = await entries.createEntry(
+        content: 'Entry with two tags',
+        tagIds: [a.id, b.id],
+      );
+
+      // Drop B, keep A (exercises the isNotIn branch in updateEntry).
+      await entries.updateEntry(id: entry.id, tagIds: [a.id]);
+
+      final links = await (db.select(db.entryTags)
+            ..where((et) => et.entryId.equals(entry.id)))
+          .get();
+      final aLink = links.firstWhere((l) => l.tagId == a.id);
+      final bLink = links.firstWhere((l) => l.tagId == b.id);
+      expect(aLink.deletedAt, isNull, reason: 'kept link stays live');
+      expect(bLink.deletedAt, isNotNull, reason: 'dropped link tombstoned');
+
+      final fetched = await entries.getEntryById(entry.id);
+      expect(fetched!.tags.map((t) => t.id), [a.id]);
+    });
+
+    test(
+        'tag count ignores links pointing at a soft-deleted entry (FIX 2)',
+        () async {
+      final tag = await tags.createTag(name: 'counted');
+      final entry = await entries.createEntry(
+        content: 'Entry to hide',
+        tagIds: [tag.id],
+      );
+
+      // Soft-delete ONLY the entry row directly so the link stays live
+      // (deleteEntry would also tombstone the link, which is not what we want
+      // to exercise here).
+      await (db.update(db.entries)..where((e) => e.id.equals(entry.id))).write(
+        EntriesCompanion(
+          deletedAt: Value(DateTime.now().millisecondsSinceEpoch),
+        ),
+      );
+
+      // The link is still live...
+      final liveLinks = await (db.select(db.entryTags)
+            ..where(
+              (et) => et.entryId.equals(entry.id) & et.deletedAt.isNull(),
+            ))
+          .get();
+      expect(liveLinks, isNotEmpty, reason: 'link intentionally left live');
+
+      // ...but the count must exclude it because the entry is tombstoned.
+      final withCounts = await tags.getTagsWithCounts();
+      final counted = withCounts.firstWhere((t) => t.tag.id == tag.id);
+      expect(counted.entryCount, 0);
     });
 
     test('re-adding a removed tag revives the link without duplicating it',
