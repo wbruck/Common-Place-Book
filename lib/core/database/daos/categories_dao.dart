@@ -47,37 +47,50 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// Soft-deletes a category by setting its [Categories.deletedAt] tombstone
+  /// instead of physically removing the row, so the delete can be synced to
+  /// other devices. Live child categories are first reparented to the root
+  /// (their [Categories.parentId] is nulled) so they are not orphaned under a
+  /// tombstoned parent.
   Future<void> deleteCategory(String id) async {
-    // Set parentId to null for any child categories
-    await (update(categories)..where((c) => c.parentId.equals(id))).write(
-      const CategoriesCompanion(parentId: Value(null)),
-    );
-    // Delete the category
-    await (delete(categories)..where((c) => c.id.equals(id))).go();
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    // Reparent any live child categories to the root so they remain visible.
+    await (update(categories)
+          ..where((c) => c.parentId.equals(id) & c.deletedAt.isNull()))
+        .write(const CategoriesCompanion(parentId: Value(null)));
+
+    // Soft-delete the category itself.
+    await (update(categories)
+          ..where((c) => c.id.equals(id) & c.deletedAt.isNull()))
+        .write(CategoriesCompanion(deletedAt: Value(now)));
   }
 
   Future<Category?> getCategoryById(String id) {
-    return (select(categories)..where((c) => c.id.equals(id)))
+    return (select(categories)
+          ..where((c) => c.id.equals(id) & c.deletedAt.isNull()))
         .getSingleOrNull();
   }
 
   // ============ Query Operations ============
 
   Future<List<Category>> getAllCategories() {
-    return (select(categories)..orderBy([(c) => OrderingTerm.asc(c.name)]))
+    return (select(categories)
+          ..where((c) => c.deletedAt.isNull())
+          ..orderBy([(c) => OrderingTerm.asc(c.name)]))
         .get();
   }
 
   Future<List<Category>> getRootCategories() {
     return (select(categories)
-          ..where((c) => c.parentId.isNull())
+          ..where((c) => c.parentId.isNull() & c.deletedAt.isNull())
           ..orderBy([(c) => OrderingTerm.asc(c.name)]))
         .get();
   }
 
   Future<List<Category>> getChildCategories(String parentId) {
     return (select(categories)
-          ..where((c) => c.parentId.equals(parentId))
+          ..where((c) => c.parentId.equals(parentId) & c.deletedAt.isNull())
           ..orderBy([(c) => OrderingTerm.asc(c.name)]))
         .get();
   }
@@ -85,7 +98,9 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
   // ============ Stream Queries ============
 
   Stream<List<Category>> watchAllCategories() {
-    return (select(categories)..orderBy([(c) => OrderingTerm.asc(c.name)]))
+    return (select(categories)
+          ..where((c) => c.deletedAt.isNull())
+          ..orderBy([(c) => OrderingTerm.asc(c.name)]))
         .watch();
   }
 }
