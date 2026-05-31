@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 
 import '../database.dart';
 
@@ -7,6 +8,8 @@ part 'entries_dao.g.dart';
 @DriftAccessor(tables: [Entries, Tags, EntryTags])
 class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
   EntriesDao(super.db);
+
+  static const Uuid _uuid = Uuid();
 
   // ============ CRUD Operations ============
 
@@ -33,7 +36,11 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
     // Add tag associations
     for (final tagId in tagIds) {
       await into(entryTags).insert(
-        EntryTagsCompanion.insert(entryId: id, tagId: tagId),
+        EntryTagsCompanion.insert(
+          id: _uuid.v4(),
+          entryId: id,
+          tagId: tagId,
+        ),
         mode: InsertMode.insertOrIgnore,
       );
     }
@@ -66,7 +73,11 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
       await (delete(entryTags)..where((et) => et.entryId.equals(id))).go();
       for (final tagId in tagIds) {
         await into(entryTags).insert(
-          EntryTagsCompanion.insert(entryId: id, tagId: tagId),
+          EntryTagsCompanion.insert(
+            id: _uuid.v4(),
+            entryId: id,
+            tagId: tagId,
+          ),
           mode: InsertMode.insertOrIgnore,
         );
       }
