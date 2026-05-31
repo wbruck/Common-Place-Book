@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../core/auth/auth_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final authService = context.read<AuthService>();
 
     return Scaffold(
       appBar: AppBar(
@@ -12,6 +17,13 @@ class SettingsScreen extends StatelessWidget {
       ),
       body: ListView(
         children: [
+          // Account section: optional sign-in for cross-device sync. The app
+          // is fully usable signed out; this never gates any screen (US-007).
+          _buildSectionHeader(context, 'Account'),
+          _AccountTile(authService: authService),
+
+          const Divider(),
+
           // Appearance section
           _buildSectionHeader(context, 'Appearance'),
           ListTile(
@@ -51,12 +63,6 @@ class SettingsScreen extends StatelessWidget {
             leading: Icon(Icons.download_outlined),
             title: Text('Import entries'),
             subtitle: Text('Coming soon'),
-            enabled: false,
-          ),
-          const ListTile(
-            leading: Icon(Icons.cloud_outlined),
-            title: Text('Cloud sync'),
-            subtitle: Text('Coming in a future update'),
             enabled: false,
           ),
         ],
@@ -152,6 +158,103 @@ class SettingsScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Settings row reflecting the current account state (US-007).
+///
+/// Signed out: an actionable row that routes to `/login`
+/// ("Sign in to sync across devices"). Signed in: the account email plus a
+/// "Sign out" action. Rebuilds reactively on [AuthService.authStateChanges]
+/// so the row flips immediately when the user signs in or out elsewhere.
+///
+/// Signing out is non-destructive: it clears the session only and never
+/// touches the local Drift database, so every entry stays on the device
+/// (FR-11 / US-013).
+class _AccountTile extends StatefulWidget {
+  const _AccountTile({required this.authService});
+
+  final AuthService authService;
+
+  @override
+  State<_AccountTile> createState() => _AccountTileState();
+}
+
+class _AccountTileState extends State<_AccountTile> {
+  bool _isSigningOut = false;
+
+  Future<void> _signOut() async {
+    setState(() => _isSigningOut = true);
+    final result = await widget.authService.signOut();
+
+    if (!mounted) {
+      return;
+    }
+    setState(() => _isSigningOut = false);
+
+    result.fold(
+      onSuccess: (_) => _showMessage('Signed out. Your entries stay on this '
+          'device.'),
+      onFailure: (failure) => _showMessage(failure.message, isError: true),
+    );
+  }
+
+  void _showMessage(String message, {bool isError = false}) {
+    final theme = Theme.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? theme.colorScheme.error : null,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<AuthSessionState>(
+      stream: widget.authService.authStateChanges,
+      // Seed the first frame from the current user so the row renders correctly
+      // before the stream delivers its first event.
+      initialData: widget.authService.isSignedIn
+          ? AuthSessionState.signedIn
+          : AuthSessionState.signedOut,
+      builder: (context, snapshot) {
+        // Drive the rendered state from the latest stream value so the row
+        // flips reactively when the session changes. currentUser is read only
+        // when signed in, to surface the account email.
+        final isSignedIn = snapshot.data == AuthSessionState.signedIn;
+        final user = isSignedIn ? widget.authService.currentUser : null;
+        if (user == null) {
+          return ListTile(
+            leading: const Icon(Icons.cloud_off_outlined),
+            title: const Text('Sign in to sync across devices'),
+            subtitle: const Text(
+              'Optional. Back up your entries and keep every device in sync.',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/login'),
+          );
+        }
+
+        final email = user.email ?? 'Signed in';
+        return ListTile(
+          leading: const Icon(Icons.cloud_done_outlined),
+          title: Text(email),
+          subtitle: const Text('Synced across your devices'),
+          trailing: _isSigningOut
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : TextButton(
+                  onPressed: _signOut,
+                  child: const Text('Sign out'),
+                ),
+        );
+      },
     );
   }
 }

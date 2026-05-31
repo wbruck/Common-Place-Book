@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/auth/auth_service.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/entry_card.dart';
 import '../../../../shared/widgets/error_display.dart';
@@ -74,30 +75,72 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.more_vert),
             onSelected: (value) {
               switch (value) {
+                case 'sync':
+                  context.push('/login');
+                case 'account':
+                  context.push('/settings');
                 case 'tags':
                   context.push('/tags');
                 case 'settings':
                   context.push('/settings');
               }
             },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'tags',
-                child: ListTile(
-                  leading: Icon(Icons.label_outline),
-                  title: Text('Manage Tags'),
-                  contentPadding: EdgeInsets.zero,
+            itemBuilder: (context) {
+              final theme = Theme.of(context);
+              final authService = context.read<AuthService>();
+              return [
+                if (!authService.isSignedIn)
+                  PopupMenuItem(
+                    value: 'sync',
+                    child: ListTile(
+                      leading: Icon(
+                        Icons.cloud_sync_outlined,
+                        color: theme.colorScheme.primary,
+                      ),
+                      title: Text(
+                        'Sign in to sync across devices',
+                        style: TextStyle(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  )
+                else
+                  PopupMenuItem(
+                    value: 'account',
+                    child: ListTile(
+                      leading: Icon(
+                        Icons.cloud_done_outlined,
+                        color: theme.colorScheme.primary,
+                      ),
+                      title: const Text('Synced'),
+                      subtitle: Text(
+                        authService.currentUser?.email ?? 'Signed in',
+                      ),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                const PopupMenuDivider(),
+                const PopupMenuItem(
+                  value: 'tags',
+                  child: ListTile(
+                    leading: Icon(Icons.label_outline),
+                    title: Text('Manage Tags'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
                 ),
-              ),
-              const PopupMenuItem(
-                value: 'settings',
-                child: ListTile(
-                  leading: Icon(Icons.settings_outlined),
-                  title: Text('Settings'),
-                  contentPadding: EdgeInsets.zero,
+                const PopupMenuItem(
+                  value: 'settings',
+                  child: ListTile(
+                    leading: Icon(Icons.settings_outlined),
+                    title: Text('Settings'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
                 ),
-              ),
-            ],
+              ];
+            },
           ),
         ],
       ),

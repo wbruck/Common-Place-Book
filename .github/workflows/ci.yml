@@ -79,7 +79,10 @@ jobs:
         run: dart run build_runner build --delete-conflicting-outputs
 
       - name: Build web
-        run: flutter build web --release
+        run: >
+          flutter build web --release
+          --dart-define=SUPABASE_URL=${{ vars.SUPABASE_URL }}
+          --dart-define=SUPABASE_ANON_KEY=${{ vars.SUPABASE_ANON_KEY }}
 
       - name: Resolve deploy branch
         id: branch
