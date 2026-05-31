@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 
+import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/discovery/presentation/screens/discovery_screen.dart';
 import '../features/entries/presentation/screens/entry_detail_screen.dart';
 import '../features/entries/presentation/screens/entry_form_screen.dart';
@@ -50,6 +51,11 @@ final appRouter = GoRouter(
       path: '/settings',
       name: 'settings',
       builder: (context, state) => const SettingsScreen(),
+    ),
+    GoRoute(
+      path: '/login',
+      name: 'login',
+      builder: (context, state) => const LoginScreen(),
     ),
   ],
 );
