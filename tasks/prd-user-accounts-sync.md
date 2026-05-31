@@ -76,7 +76,7 @@ This PRD also documents the backend research the owner requested (cost-per-user 
 **Acceptance Criteria:**
 - [ ] Add `supabase_flutter` to `pubspec.yaml`; commit the updated `pubspec.lock`.
 - [ ] Initialize Supabase in `lib/main.dart` before `runApp` using config from `--dart-define` (no secrets committed).
-- [ ] New `lib/core/auth/auth_service.dart` exposes: `Stream<AuthState> authStateChanges`, `User? currentUser`, and methods `signUpWithEmail`, `signInWithEmail`, `signInWithGoogle`, `signOut`, returning `Result<T>` (`lib/core/utils/result.dart`).
+- [ ] New `lib/core/auth/auth_service.dart` exposes: an auth-state stream (a coarse `AuthSessionState` signed-in/out enum — intentional, to avoid leaking the backend event model), `User? currentUser`, and methods `signUpWithEmail`, `signInWithEmail`, `signOut`, `sendPasswordResetEmail`, returning `Result<T>` (`lib/core/utils/result.dart`). (`signInWithGoogle` moves to the deferred US-006; not part of US-004.)
 - [ ] All auth diagnostics go through `AppLogger` (no new logger).
 - [ ] Unit test with a mocked Supabase client covers the state stream emitting signed-in/signed-out and error → `Result.failure` mapping.
 - [ ] `flutter test` + `flutter analyze` pass.
@@ -333,3 +333,15 @@ An adversarial review ran post-build; defects fixed in follow-up commit `5a83fc7
 1. **`updatedAt` on `Tags` and `Categories`.** LWW (FR-7) resolves by `updatedAt`, but only `Entries` has it. Add `updatedAt` to `Tags` and `Categories` (set on create/update/delete), with matching `updated_at` columns on the Supabase tables — a small `ALTER TABLE` on the already-provisioned instance, and `docs/sync-setup.md` §2 should gain those columns for fresh provisioning. (`entry_tags` is insert/tombstone-only, so `deletedAt` suffices.)
 2. **Deterministic `entry_tags.id`.** The synthetic id is a random UUID; two devices creating the same `(entryId, tagId)` link get different ids but collide on the `UNIQUE(entryId, tagId)` index at merge. Derive the id deterministically from the pair (e.g. a v5 UUID of `entryId+tagId`) when sync lands.
 3. **Migration test hardening.** v1→v3 coverage was added; consider also exercising the background-isolate (`createInBackground`) and WASM executors, since the FK-off `entry_tags` rebuild relies on drift not wrapping `onUpgrade` in a transaction.
+
+## Phase 1 — Build Status & Carried-Forward Items
+
+**Phase 1 (auth shell) is built and committed** on branch `feat/user-accounts-auth` (stacked on Phase 0). US-004 (Supabase init + injectable `AuthService`, `supabase_flutter` 2.12.4), US-005 (email/password login screen + `/login` route), US-007 (optional-login UX in Settings + non-destructive sign-out). Google (US-006) deferred. `flutter analyze` clean; full suite green. Email/password only; no auth gate; **no server-only secret referenced in client code** (grep-verified by review).
+
+Adversarial review fixes (follow-up commit):
+- **Sign-up email-confirmation flow** — when Supabase email confirmation is on, `signUp` returns a user but no session; the screen now stays with a "check your email to confirm, then sign in" state instead of bouncing back to a signed-out-looking Settings.
+- **Settings reactivity** — `_AccountTile` now renders from the stream snapshot (with `currentUser` as the initial seed); added the missing sign-IN flip, end-to-end round-trip, and LocalOnly failure-mapping tests.
+
+**Open verification item (cannot be automated in a headless env):**
+- **Live auth + session persistence** must be checked in a real browser against the Supabase project: app logged-out → sign in from Settings → reload → still signed in; and sign up → confirm email → sign in. Run locally with `flutter run -d chrome --dart-define-from-file=.env`.
+- **CI/preview caveat:** the Cloudflare Pages preview build will **not** exercise auth unless CI passes `SUPABASE_URL` + `SUPABASE_ANON_KEY` as `--dart-define` build args (add them as build env from GitHub secrets). Without them the web build falls back to local-only (auth unavailable) — by design.
