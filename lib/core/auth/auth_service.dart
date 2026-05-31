@@ -66,6 +66,49 @@ abstract class AuthClient {
   Future<void> resetPasswordForEmail(String email);
 }
 
+/// [AuthClient] used when no auth backend is available.
+///
+/// Supabase initialization is skipped when its client config (`SUPABASE_URL`
+/// / `SUPABASE_ANON_KEY`) is missing — e.g. a local-only dev build. In that
+/// case the app must still boot and stay fully usable logged out, so this
+/// client reports a permanently signed-out state and fails any auth attempt
+/// with a readable message instead of throwing on a missing `Supabase.instance`.
+class LocalOnlyAuthClient implements AuthClient {
+  const LocalOnlyAuthClient();
+
+  static const String _unavailable =
+      'Sign-in is unavailable in this build. The app works fully offline.';
+
+  @override
+  Stream<AuthState> get onAuthStateChange => const Stream<AuthState>.empty();
+
+  @override
+  User? get currentUser => null;
+
+  @override
+  Future<AuthResponse> signUp({
+    required String email,
+    required String password,
+  }) =>
+      throw const AuthException(_unavailable);
+
+  @override
+  Future<AuthResponse> signInWithPassword({
+    required String email,
+    required String password,
+  }) =>
+      throw const AuthException(_unavailable);
+
+  @override
+  Future<void> signOut() async {
+    // No session to clear; signing out of a local-only build is a no-op.
+  }
+
+  @override
+  Future<void> resetPasswordForEmail(String email) =>
+      throw const AuthException(_unavailable);
+}
+
 /// [AuthClient] implementation backed by Supabase's [GoTrueClient].
 class SupabaseAuthClient implements AuthClient {
   const SupabaseAuthClient(this._auth);
@@ -111,6 +154,25 @@ class SupabaseAuthClient implements AuthClient {
 /// touching the network or calling `Supabase.initialize`.
 class AuthService {
   AuthService(this._client);
+
+  /// Builds an [AuthService] bound to the live Supabase client.
+  ///
+  /// Falls back to a [LocalOnlyAuthClient] when Supabase was not initialized
+  /// (missing client config), so callers can construct an [AuthService]
+  /// unconditionally and the app stays usable logged out. Never throws.
+  factory AuthService.fromSupabase() {
+    try {
+      return AuthService(
+        SupabaseAuthClient(Supabase.instance.client.auth),
+      );
+    } on Object catch (error) {
+      AppLogger.warning(
+        'Supabase not initialized; using local-only auth. ($error)',
+        tag: _logTag,
+      );
+      return AuthService(const LocalOnlyAuthClient());
+    }
+  }
 
   static const String _logTag = 'AuthService';
 

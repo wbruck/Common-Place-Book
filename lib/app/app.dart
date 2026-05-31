@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../core/auth/auth_service.dart';
 import '../core/database/database_provider.dart';
 import '../features/entries/data/repositories/entry_repository.dart';
 import '../features/entries/data/repositories/local_entry_repository.dart';
@@ -12,7 +13,14 @@ import 'router.dart';
 import 'theme/app_theme.dart';
 
 class CommonPlaceBookApp extends StatelessWidget {
-  const CommonPlaceBookApp({super.key});
+  /// [authService] is injectable so widget tests can supply a fake-backed
+  /// service without `Supabase.initialize`. In production it is omitted and
+  /// built from the live Supabase client (or a local-only fallback) here, so
+  /// the app boots and stays usable logged out even with no auth backend.
+  const CommonPlaceBookApp({super.key, AuthService? authService})
+      : _injectedAuthService = authService;
+
+  final AuthService? _injectedAuthService;
 
   @override
   Widget build(BuildContext context) {
@@ -21,6 +29,7 @@ class CommonPlaceBookApp extends StatelessWidget {
     // Create concrete implementations
     final entryRepository = LocalEntryRepository(database: database);
     final tagRepository = LocalTagRepository(database: database);
+    final authService = _injectedAuthService ?? AuthService.fromSupabase();
 
     return MultiRepositoryProvider(
       providers: [
@@ -30,6 +39,10 @@ class CommonPlaceBookApp extends StatelessWidget {
         ),
         RepositoryProvider<TagRepository>(
           create: (_) => tagRepository,
+        ),
+        // App-level so Settings and the login screen read a single instance.
+        RepositoryProvider<AuthService>(
+          create: (_) => authService,
         ),
       ],
       child: MultiBlocProvider(

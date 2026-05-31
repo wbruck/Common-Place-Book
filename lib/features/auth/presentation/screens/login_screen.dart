@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/auth/auth_service.dart';
 
@@ -21,9 +21,9 @@ enum AuthMode {
 /// readable messages rather than raw exceptions.
 ///
 /// [authService] is injectable so widget tests can supply a fake without
-/// touching the network or `Supabase.initialize`. When omitted it is built
-/// lazily from the live Supabase client, which is only constructed on
-/// navigation (after `main()` has initialized Supabase).
+/// touching the network or `Supabase.initialize`. When omitted it is read from
+/// the app-level [RepositoryProvider] (the single instance shared with
+/// Settings), which was built after `main()` initialized Supabase.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, AuthService? authService})
       : _injectedAuthService = authService;
@@ -53,8 +53,8 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _authService = widget._injectedAuthService ??
-        AuthService(SupabaseAuthClient(Supabase.instance.client.auth));
+    _authService =
+        widget._injectedAuthService ?? context.read<AuthService>();
   }
 
   @override
