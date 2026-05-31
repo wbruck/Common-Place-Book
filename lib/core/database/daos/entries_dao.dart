@@ -33,19 +33,45 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
 
     await into(entries).insert(entry);
 
-    // Add tag associations
+    // Add tag associations.
     for (final tagId in tagIds) {
-      await into(entryTags).insert(
-        EntryTagsCompanion.insert(
-          id: _uuid.v4(),
-          entryId: id,
-          tagId: tagId,
-        ),
-        mode: InsertMode.insertOrIgnore,
-      );
+      await _linkTag(entryId: id, tagId: tagId);
     }
 
     return (select(entries)..where((e) => e.id.equals(id))).getSingle();
+  }
+
+  /// Creates (or revives) a live entry_tag link for the given pair.
+  ///
+  /// A previously soft-deleted link with the same (entryId, tagId) is revived
+  /// in place rather than inserted again: the UNIQUE index on (entryId, tagId)
+  /// covers soft-deleted rows too, so a plain insert would conflict. Reviving
+  /// clears [deletedAt] (and keeps the existing synthetic id) so the link
+  /// reappears in reads.
+  Future<void> _linkTag({
+    required String entryId,
+    required String tagId,
+  }) async {
+    final existing = await (select(entryTags)
+          ..where((et) => et.entryId.equals(entryId) & et.tagId.equals(tagId)))
+        .getSingleOrNull();
+
+    if (existing != null) {
+      if (existing.deletedAt != null) {
+        await (update(entryTags)..where((et) => et.id.equals(existing.id)))
+            .write(const EntryTagsCompanion(deletedAt: Value(null)));
+      }
+      return;
+    }
+
+    await into(entryTags).insert(
+      EntryTagsCompanion.insert(
+        id: _uuid.v4(),
+        entryId: entryId,
+        tagId: tagId,
+      ),
+      mode: InsertMode.insertOrIgnore,
+    );
   }
 
   Future<void> updateEntry({
@@ -68,29 +94,49 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
       ),
     );
 
-    // Update tag associations if provided
+    // Update tag associations if provided. Links are soft-deleted (never
+    // physically removed) so the change can propagate to other devices.
     if (tagIds != null) {
-      await (delete(entryTags)..where((et) => et.entryId.equals(id))).go();
+      // Soft-delete any currently-live link whose tag is no longer in the set.
+      final removeLinks = update(entryTags)
+        ..where((et) => et.entryId.equals(id) & et.deletedAt.isNull());
+      if (tagIds.isNotEmpty) {
+        removeLinks.where((et) => et.tagId.isNotIn(tagIds));
+      }
+      await removeLinks.write(EntryTagsCompanion(deletedAt: Value(now)));
+
+      // Add or revive a live link for every tag in the new set.
       for (final tagId in tagIds) {
-        await into(entryTags).insert(
-          EntryTagsCompanion.insert(
-            id: _uuid.v4(),
-            entryId: id,
-            tagId: tagId,
-          ),
-          mode: InsertMode.insertOrIgnore,
-        );
+        await _linkTag(entryId: id, tagId: tagId);
       }
     }
   }
 
+  /// Soft-deletes an entry by setting its [Entries.deletedAt] tombstone (and
+  /// bumping [Entries.updatedAt]) instead of physically removing the row, and
+  /// soft-deletes the entry's links so they stop appearing in reads. The row
+  /// is retained so the delete can be synced to other devices.
   Future<void> deleteEntry(String id) async {
-    await (delete(entryTags)..where((et) => et.entryId.equals(id))).go();
-    await (delete(entries)..where((e) => e.id.equals(id))).go();
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    await (update(entryTags)
+          ..where((et) => et.entryId.equals(id) & et.deletedAt.isNull()))
+        .write(EntryTagsCompanion(deletedAt: Value(now)));
+
+    await (update(entries)
+          ..where((e) => e.id.equals(id) & e.deletedAt.isNull()))
+        .write(
+      EntriesCompanion(
+        deletedAt: Value(now),
+        updatedAt: Value(now),
+      ),
+    );
   }
 
   Future<Entry?> getEntryById(String id) {
-    return (select(entries)..where((e) => e.id.equals(id))).getSingleOrNull();
+    return (select(entries)
+          ..where((e) => e.id.equals(id) & e.deletedAt.isNull()))
+        .getSingleOrNull();
   }
 
   // ============ Query Operations ============
@@ -101,7 +147,7 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
     OrderingMode orderBy = OrderingMode.desc,
     String orderColumn = 'createdAt',
   }) {
-    final query = select(entries);
+    final query = select(entries)..where((e) => e.deletedAt.isNull());
 
     switch (orderColumn) {
       case 'createdAt':
@@ -147,9 +193,12 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
     int? offset,
   }) {
     final query = select(entries).join([
-      innerJoin(entryTags, entryTags.entryId.equalsExp(entries.id)),
+      innerJoin(
+        entryTags,
+        entryTags.entryId.equalsExp(entries.id) & entryTags.deletedAt.isNull(),
+      ),
     ])
-      ..where(entryTags.tagId.equals(tagId))
+      ..where(entryTags.tagId.equals(tagId) & entries.deletedAt.isNull())
       ..orderBy([OrderingTerm.desc(entries.createdAt)]);
 
     if (limit != null) {
@@ -161,7 +210,12 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
 
   Future<List<Entry>> searchEntries(String searchTerm, {int? limit}) {
     final query = select(entries)
-      ..where((e) => e.content.contains(searchTerm) | e.source.contains(searchTerm))
+      ..where(
+        (e) =>
+            (e.content.contains(searchTerm) |
+                e.source.contains(searchTerm)) &
+            e.deletedAt.isNull(),
+      )
       ..orderBy([(e) => OrderingTerm.desc(e.createdAt)]);
 
     if (limit != null) {
@@ -174,6 +228,7 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
   Future<Entry?> getRandomEntry() async {
     // Use SQL RANDOM() for efficient random selection without loading all entries
     final query = select(entries)
+      ..where((e) => e.deletedAt.isNull())
       ..orderBy([(_) => OrderingTerm(expression: const CustomExpression('RANDOM()'))])
       ..limit(1);
 
@@ -184,9 +239,12 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
   Future<Entry?> getRandomEntryByTag(String tagId) async {
     // Use SQL RANDOM() for efficient random selection
     final query = select(entries).join([
-      innerJoin(entryTags, entryTags.entryId.equalsExp(entries.id)),
+      innerJoin(
+        entryTags,
+        entryTags.entryId.equalsExp(entries.id) & entryTags.deletedAt.isNull(),
+      ),
     ])
-      ..where(entryTags.tagId.equals(tagId))
+      ..where(entryTags.tagId.equals(tagId) & entries.deletedAt.isNull())
       ..orderBy([OrderingTerm(expression: const CustomExpression('RANDOM()'))])
       ..limit(1);
 
@@ -195,9 +253,9 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
   }
 
   Future<List<Entry>> getRelatedEntries(String entryId, {int limit = 5}) async {
-    // Get the tags for the current entry
+    // Get the tags for the current entry (live links only).
     final currentEntryTags = await (select(entryTags)
-          ..where((et) => et.entryId.equals(entryId)))
+          ..where((et) => et.entryId.equals(entryId) & et.deletedAt.isNull()))
         .get();
 
     if (currentEntryTags.isEmpty) {
@@ -206,13 +264,22 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
 
     final tagIds = currentEntryTags.map((et) => et.tagId).toList();
 
-    // Find entries that share tags with the current entry
+    // Find entries that share tags with the current entry. Soft-deleted links
+    // and soft-deleted entries are excluded.
     final query = selectOnly(entries)
       ..addColumns([entries.id])
       ..join([
-        innerJoin(entryTags, entryTags.entryId.equalsExp(entries.id)),
+        innerJoin(
+          entryTags,
+          entryTags.entryId.equalsExp(entries.id) &
+              entryTags.deletedAt.isNull(),
+        ),
       ])
-      ..where(entryTags.tagId.isIn(tagIds) & entries.id.equals(entryId).not())
+      ..where(
+        entryTags.tagId.isIn(tagIds) &
+            entries.id.equals(entryId).not() &
+            entries.deletedAt.isNull(),
+      )
       ..groupBy([entries.id])
       ..orderBy([OrderingTerm.desc(entryTags.tagId.count())])
       ..limit(limit);
@@ -222,7 +289,9 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
 
     if (relatedIds.isEmpty) return [];
 
-    return (select(entries)..where((e) => e.id.isIn(relatedIds))).get();
+    return (select(entries)
+          ..where((e) => e.id.isIn(relatedIds) & e.deletedAt.isNull()))
+        .get();
   }
 
   // ============ View Tracking ============
@@ -245,14 +314,16 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
 
   Future<int> getEntryCount() async {
     final count = entries.id.count();
-    final query = selectOnly(entries)..addColumns([count]);
+    final query = selectOnly(entries)
+      ..addColumns([count])
+      ..where(entries.deletedAt.isNull());
     final result = await query.getSingle();
     return result.read(count) ?? 0;
   }
 
   Future<List<Entry>> getFavoriteEntries({int? limit}) {
     final query = select(entries)
-      ..where((e) => e.isFavorite.equals(true))
+      ..where((e) => e.isFavorite.equals(true) & e.deletedAt.isNull())
       ..orderBy([(e) => OrderingTerm.desc(e.createdAt)]);
 
     if (limit != null) {
@@ -265,22 +336,29 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
   // ============ Stream Queries ============
 
   Stream<List<Entry>> watchAllEntries() {
-    return (select(entries)..orderBy([(e) => OrderingTerm.desc(e.createdAt)]))
+    return (select(entries)
+          ..where((e) => e.deletedAt.isNull())
+          ..orderBy([(e) => OrderingTerm.desc(e.createdAt)]))
         .watch();
   }
 
   Stream<Entry?> watchEntry(String id) {
-    return (select(entries)..where((e) => e.id.equals(id)))
+    return (select(entries)
+          ..where((e) => e.id.equals(id) & e.deletedAt.isNull()))
         .watchSingleOrNull();
   }
 
   // ============ Tag Helpers ============
 
   Future<List<Tag>> getTagsForEntry(String entryId) async {
+    // Only live links to live tags.
     final query = select(tags).join([
-      innerJoin(entryTags, entryTags.tagId.equalsExp(tags.id)),
+      innerJoin(
+        entryTags,
+        entryTags.tagId.equalsExp(tags.id) & entryTags.deletedAt.isNull(),
+      ),
     ])
-      ..where(entryTags.entryId.equals(entryId));
+      ..where(entryTags.entryId.equals(entryId) & tags.deletedAt.isNull());
 
     return query.map((row) => row.readTable(tags)).get();
   }
