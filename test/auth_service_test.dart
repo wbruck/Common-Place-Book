@@ -146,7 +146,7 @@ void main() {
   });
 
   group('signUpWithEmail', () {
-    test('returns the user on success', () async {
+    test('returns a signed-in outcome when a session is issued', () async {
       final user = _fakeUser('new-user');
       client.responseToReturn = AuthResponse(session: _fakeSession(user));
 
@@ -156,7 +156,55 @@ void main() {
       );
 
       expect(result.isSuccess, isTrue);
-      expect(result.valueOrNull?.id, 'new-user');
+      final value = result.valueOrNull;
+      expect(value?.user.id, 'new-user');
+      expect(value?.outcome, SignUpOutcome.signedIn);
+      expect(value?.isSignedIn, isTrue);
+      expect(value?.isConfirmationPending, isFalse);
+    });
+
+    test('returns confirmation-pending when a user but no session is returned',
+        () async {
+      // Supabase default: email confirmation on -> user present, session null.
+      client.responseToReturn = AuthResponse(user: _fakeUser('pending-user'));
+
+      final result = await service.signUpWithEmail(
+        email: 'user@example.com',
+        password: 'password123',
+      );
+
+      expect(result.isSuccess, isTrue);
+      final value = result.valueOrNull;
+      expect(value?.user.id, 'pending-user');
+      expect(value?.outcome, SignUpOutcome.confirmationPending);
+      expect(value?.isConfirmationPending, isTrue);
+      expect(value?.isSignedIn, isFalse);
+    });
+
+    test('resolves the user from the session when top-level user is null',
+        () async {
+      final user = _fakeUser('session-only');
+      client.responseToReturn = AuthResponse(session: _fakeSession(user));
+
+      final result = await service.signUpWithEmail(
+        email: 'user@example.com',
+        password: 'password123',
+      );
+
+      expect(result.valueOrNull?.user.id, 'session-only');
+      expect(result.valueOrNull?.outcome, SignUpOutcome.signedIn);
+    });
+
+    test('fails when neither user nor session is returned', () async {
+      client.responseToReturn = AuthResponse();
+
+      final result = await service.signUpWithEmail(
+        email: 'user@example.com',
+        password: 'password123',
+      );
+
+      expect(result.isFailure, isTrue);
+      expect(result.errorOrNull, isA<AuthFailure>());
     });
 
     test('maps an AuthException to Result.failure with a readable message',
@@ -251,6 +299,62 @@ void main() {
 
       expect(result.isFailure, isTrue);
       expect(result.errorOrNull?.message, 'Unable to send reset email');
+    });
+  });
+
+  group('LocalOnlyAuthClient via AuthService', () {
+    // No backend configured: every auth attempt should fail with the friendly
+    // "unavailable in this build" message rather than throwing.
+    late AuthService localOnly;
+
+    setUp(() {
+      localOnly = AuthService(const LocalOnlyAuthClient());
+    });
+
+    test('reports signed out', () {
+      expect(localOnly.isSignedIn, isFalse);
+      expect(localOnly.currentUser, isNull);
+    });
+
+    test('authStateChanges emits an initial signed-out state', () async {
+      final first = await localOnly.authStateChanges.first;
+      expect(first, AuthSessionState.signedOut);
+    });
+
+    test('signInWithEmail fails with the unavailable message', () async {
+      final result = await localOnly.signInWithEmail(
+        email: 'user@example.com',
+        password: 'password123',
+      );
+
+      expect(result.isFailure, isTrue);
+      expect(
+        result.errorOrNull?.message,
+        contains('unavailable in this build'),
+      );
+    });
+
+    test('signUpWithEmail fails with the unavailable message', () async {
+      final result = await localOnly.signUpWithEmail(
+        email: 'user@example.com',
+        password: 'password123',
+      );
+
+      expect(result.isFailure, isTrue);
+      expect(
+        result.errorOrNull?.message,
+        contains('unavailable in this build'),
+      );
+    });
+
+    test('sendPasswordResetEmail fails with the unavailable message', () async {
+      final result = await localOnly.sendPasswordResetEmail('user@example.com');
+
+      expect(result.isFailure, isTrue);
+      expect(
+        result.errorOrNull?.message,
+        contains('unavailable in this build'),
+      );
     });
   });
 }

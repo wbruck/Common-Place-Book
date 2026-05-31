@@ -206,9 +206,11 @@ void main() {
     expect(find.text('home-landing'), findsNothing);
   });
 
-  testWidgets('toggling to sign-up calls signUp on submit', (tester) async {
-    client.responseToReturn =
-        AuthResponse(user: _fakeUser('new-user'));
+  testWidgets(
+      'sign-up with confirmation pending stays on screen and shows a banner',
+      (tester) async {
+    // Supabase default: email confirmation on -> user present, no session.
+    client.responseToReturn = AuthResponse(user: _fakeUser('new-user'));
 
     await _pumpLoginScreen(tester, service);
 
@@ -231,8 +233,45 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(client.calls, contains('signUp'));
-    // Forgot-password link is sign-in only.
-    expect(find.text('Forgot password?'), findsNothing);
+    // Did NOT navigate away — the login screen is still mounted.
+    expect(find.text('home-landing'), findsNothing);
+    // Persistent banner instructs the user to confirm, then sign in.
+    expect(find.text('Check your email to confirm'), findsOneWidget);
+    // The screen has switched to sign-in mode (Forgot password? is sign-in
+    // only, and the primary button now reads "Sign in").
+    expect(find.text('Forgot password?'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Sign in'), findsOneWidget);
+  });
+
+  testWidgets('sign-up that yields a session navigates away as before',
+      (tester) async {
+    // Email confirmation disabled: a session is issued immediately.
+    client.responseToReturn =
+        AuthResponse(session: _fakeSession(_fakeUser('new-user')));
+
+    await _pumpLoginScreen(tester, service);
+
+    await tester.tap(
+      find.text("Don't have an account? Create one"),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byType(TextFormField).first,
+      'new@example.com',
+    );
+    await tester.enterText(
+      find.byType(TextFormField).last,
+      'password123',
+    );
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Create account'));
+    await tester.pumpAndSettle();
+
+    expect(client.calls, contains('signUp'));
+    // An active session exists, so we pop back and land home.
+    expect(find.text('home-landing'), findsOneWidget);
+    expect(find.text('Check your email to confirm'), findsNothing);
   });
 
   testWidgets('forgot-password requires a valid email first', (tester) async {

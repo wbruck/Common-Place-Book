@@ -45,6 +45,11 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isSubmitting = false;
   bool _obscurePassword = true;
 
+  /// Set after a sign-up that created an account but withheld a session pending
+  /// email confirmation. Drives a persistent inline banner (not a transient
+  /// SnackBar) so the user understands sign-up succeeded and what to do next.
+  bool _confirmationPending = false;
+
   /// Minimum password length enforced client-side before hitting the backend.
   static const int _minPasswordLength = 6;
 
@@ -92,6 +97,11 @@ class _LoginScreenState extends State<LoginScreen> {
   void _toggleMode() {
     setState(() {
       _mode = _isSignIn ? AuthMode.signUp : AuthMode.signIn;
+      // Leaving the screen state the user explicitly changed; clear the
+      // confirmation banner only when they head back into sign-up.
+      if (!_isSignIn) {
+        _confirmationPending = false;
+      }
     });
   }
 
@@ -103,32 +113,68 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final email = _emailController.text.trim();
     final password = _passwordController.text;
+    // Capture which flow we ran before awaiting, so a mode toggle mid-request
+    // can't misroute the result.
+    final wasSignIn = _isSignIn;
 
-    setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+      _confirmationPending = false;
+    });
 
-    final result = _isSignIn
-        ? await _authService.signInWithEmail(email: email, password: password)
-        : await _authService.signUpWithEmail(email: email, password: password);
+    if (wasSignIn) {
+      final result =
+          await _authService.signInWithEmail(email: email, password: password);
+      if (!mounted) {
+        return;
+      }
+      setState(() => _isSubmitting = false);
+      result.fold(
+        onSuccess: (_) {
+          // A successful sign-in always carries an active session.
+          _showMessage('Signed in successfully.');
+          _leaveOnSignedIn();
+        },
+        onFailure: (failure) => _showMessage(failure.message, isError: true),
+      );
+      return;
+    }
 
+    final result =
+        await _authService.signUpWithEmail(email: email, password: password);
     if (!mounted) {
       return;
     }
     setState(() => _isSubmitting = false);
-
     result.fold(
-      onSuccess: (_) {
-        final message = _isSignIn
-            ? 'Signed in successfully.'
-            : 'Account created. Check your email to confirm if required.';
-        _showMessage(message);
-        if (context.canPop()) {
-          context.pop();
-        } else {
-          context.go('/');
+      onSuccess: (signUp) {
+        if (signUp.isSignedIn) {
+          // Confirmation disabled: an active session exists, navigate away.
+          _showMessage('Account created. You are signed in.');
+          _leaveOnSignedIn();
+          return;
         }
+        // Confirmation pending: the account exists but no session yet. Stay on
+        // the screen, switch to sign-in mode, and show a persistent banner so
+        // it never looks like sign-up silently failed.
+        setState(() {
+          _mode = AuthMode.signIn;
+          _confirmationPending = true;
+          _passwordController.clear();
+        });
       },
       onFailure: (failure) => _showMessage(failure.message, isError: true),
     );
+  }
+
+  /// Pops back to the caller (Settings) or, failing that, routes home. Used
+  /// only when an active session exists.
+  void _leaveOnSignedIn() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/');
+    }
   }
 
   Future<void> _sendPasswordReset() async {
@@ -209,6 +255,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodySmall,
                     ),
+                    if (_confirmationPending) ...[
+                      const SizedBox(height: 24),
+                      _ConfirmationPendingBanner(),
+                    ],
                     const SizedBox(height: 32),
                     TextFormField(
                       controller: _emailController,
@@ -292,6 +342,57 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Persistent inline banner shown after a sign-up that requires email
+/// confirmation before a session is issued (the Supabase default).
+///
+/// Unlike a transient SnackBar this stays on screen, so the user clearly
+/// understands the account was created and that the next step is to confirm
+/// their email and then sign in.
+class _ConfirmationPendingBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.mark_email_unread_outlined,
+            color: theme.colorScheme.onSecondaryContainer,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Check your email to confirm',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: theme.colorScheme.onSecondaryContainer,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Your account was created. Open the confirmation link we '
+                  'sent, then sign in below.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSecondaryContainer,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

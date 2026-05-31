@@ -215,10 +215,17 @@ class _AccountTileState extends State<_AccountTile> {
   Widget build(BuildContext context) {
     return StreamBuilder<AuthSessionState>(
       stream: widget.authService.authStateChanges,
+      // Seed the first frame from the current user so the row renders correctly
+      // before the stream delivers its first event.
+      initialData: widget.authService.isSignedIn
+          ? AuthSessionState.signedIn
+          : AuthSessionState.signedOut,
       builder: (context, snapshot) {
-        // The stream only emits on change, so seed the initial render from the
-        // current user rather than waiting for the first event.
-        final user = widget.authService.currentUser;
+        // Drive the rendered state from the latest stream value so the row
+        // flips reactively when the session changes. currentUser is read only
+        // when signed in, to surface the account email.
+        final isSignedIn = snapshot.data == AuthSessionState.signedIn;
+        final user = isSignedIn ? widget.authService.currentUser : null;
         if (user == null) {
           return ListTile(
             leading: const Icon(Icons.cloud_off_outlined),

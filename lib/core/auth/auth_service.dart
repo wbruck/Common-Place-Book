@@ -16,6 +16,46 @@ enum AuthSessionState {
   signedOut,
 }
 
+/// Outcome of a successful [AuthService.signUpWithEmail] call.
+///
+/// Sign-up has two distinct success shapes the UI must tell apart:
+///
+///  * [signedIn] — the backend returned an active session, so the user is
+///    authenticated right now (email confirmation is disabled).
+///  * [confirmationPending] — the account was created but no session was
+///    returned, because Supabase's default email-confirmation flow requires
+///    the user to click a link before a session is issued.
+///
+/// Treating both as "navigate home" makes confirmation-pending look like a
+/// failure (the user lands back on a screen that still says "signed out"), so
+/// callers branch on this instead.
+enum SignUpOutcome {
+  /// An active session was issued; the user is signed in now.
+  signedIn,
+
+  /// The account was created but requires email confirmation before a session
+  /// is issued. The user must confirm, then sign in.
+  confirmationPending,
+}
+
+/// A successful sign-up result: the created [user] plus whether a session is
+/// already active or email confirmation is still pending.
+class SignUpResult {
+  const SignUpResult({required this.user, required this.outcome});
+
+  /// The newly created account.
+  final User user;
+
+  /// Whether the user is signed in now or must confirm their email first.
+  final SignUpOutcome outcome;
+
+  /// Whether an active session was issued (the user is signed in now).
+  bool get isSignedIn => outcome == SignUpOutcome.signedIn;
+
+  /// Whether the account awaits email confirmation before a session exists.
+  bool get isConfirmationPending => outcome == SignUpOutcome.confirmationPending;
+}
+
 /// A readable authentication failure surfaced through [Result].
 ///
 /// Wraps backend errors so callers (and the UI) get a friendly [message]
@@ -80,7 +120,15 @@ class LocalOnlyAuthClient implements AuthClient {
       'Sign-in is unavailable in this build. The app works fully offline.';
 
   @override
-  Stream<AuthState> get onAuthStateChange => const Stream<AuthState>.empty();
+  Stream<AuthState> get onAuthStateChange =>
+      // Emit an initial signed-out state so StreamBuilder-based consumers
+      // behave the same as with the Supabase client (which replays the current
+      // session on listen). A const empty stream completes immediately and
+      // never delivers a snapshot, which would force consumers to special-case
+      // the local-only client.
+      Stream<AuthState>.value(
+        const AuthState(AuthChangeEvent.signedOut, null),
+      );
 
   @override
   User? get currentUser => null;
@@ -198,16 +246,23 @@ class AuthService {
 
   /// Creates an account with [email] and [password].
   ///
-  /// On success the returned [User] is the newly created account (note that
-  /// with email confirmation enabled the user may not yet have an active
-  /// session until they confirm).
-  Future<Result<User, AuthFailure>> signUpWithEmail({
+  /// On success the result's [SignUpResult.outcome] distinguishes the two
+  /// shapes of a gotrue sign-up: an active session was issued
+  /// ([SignUpOutcome.signedIn]), or the account was created but a session is
+  /// withheld pending email confirmation ([SignUpOutcome.confirmationPending]).
+  /// The latter is the Supabase default and is NOT a failure — callers should
+  /// prompt the user to confirm and then sign in, not navigate away as if
+  /// nothing happened.
+  Future<Result<SignUpResult, AuthFailure>> signUpWithEmail({
     required String email,
     required String password,
   }) async {
     try {
       final response = await _client.signUp(email: email, password: password);
-      final user = response.user;
+      // gotrue resolves the user from either the top-level user or the
+      // session's user; mirror that so confirmation-pending sign-ups (user
+      // present, session null) are still recognized as success.
+      final user = response.user ?? response.session?.user;
       if (user == null) {
         AppLogger.warning(
           'Sign-up returned no user',
@@ -217,8 +272,14 @@ class AuthService {
           AuthFailure('Sign-up did not return a user. Please try again.'),
         );
       }
-      AppLogger.info('Sign-up succeeded', tag: _logTag);
-      return Success(user);
+      final outcome = response.session != null
+          ? SignUpOutcome.signedIn
+          : SignUpOutcome.confirmationPending;
+      AppLogger.info(
+        'Sign-up succeeded (${outcome.name})',
+        tag: _logTag,
+      );
+      return Success(SignUpResult(user: user, outcome: outcome));
     } on AuthException catch (error, stackTrace) {
       return _mapAuthException('Sign-up', error, stackTrace);
     } on Object catch (error, stackTrace) {
