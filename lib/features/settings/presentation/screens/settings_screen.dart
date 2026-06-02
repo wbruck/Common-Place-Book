@@ -1,4 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../../core/app_info.dart';
+import '../../../../core/utils/app_logger.dart';
+import '../../../data_transfer/data/data_transfer_service.dart';
+import '../../../data_transfer/data/file_save/file_save.dart';
+import '../../../data_transfer/data/json_file_picker.dart';
+import '../../../entries/presentation/bloc/entries_list_cubit.dart';
+import '../../../tags/presentation/bloc/tags_cubit.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -26,10 +35,10 @@ class SettingsScreen extends StatelessWidget {
 
           // About section
           _buildSectionHeader(context, 'About'),
-          const ListTile(
-            leading: Icon(Icons.info_outline),
-            title: Text('Version'),
-            subtitle: Text('1.0.0'),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text('Version'),
+            subtitle: Text(context.read<AppInfo>().version),
           ),
           ListTile(
             leading: const Icon(Icons.book_outlined),
@@ -41,17 +50,17 @@ class SettingsScreen extends StatelessWidget {
 
           // Data section
           _buildSectionHeader(context, 'Data'),
-          const ListTile(
-            leading: Icon(Icons.upload_outlined),
-            title: Text('Export entries'),
-            subtitle: Text('Coming soon'),
-            enabled: false,
+          ListTile(
+            leading: const Icon(Icons.upload_outlined),
+            title: const Text('Export entries'),
+            subtitle: const Text('Save a backup file'),
+            onTap: () => _handleExport(context),
           ),
-          const ListTile(
-            leading: Icon(Icons.download_outlined),
-            title: Text('Import entries'),
-            subtitle: Text('Coming soon'),
-            enabled: false,
+          ListTile(
+            leading: const Icon(Icons.download_outlined),
+            title: const Text('Import entries'),
+            subtitle: const Text('Merge a backup into your library'),
+            onTap: () => _handleImport(context),
           ),
           const ListTile(
             leading: Icon(Icons.cloud_outlined),
@@ -74,6 +83,115 @@ class SettingsScreen extends StatelessWidget {
             ),
       ),
     );
+  }
+
+  Future<void> _handleExport(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final service = context.read<DataTransferService>();
+    try {
+      // Anchor the iPad share popover so share_plus does not crash on iPad (it
+      // requires a sharePositionOrigin there). Computed before the first await
+      // so it is safe to use the context, and inside the try so a render-object
+      // failure surfaces as 'Export failed' rather than escaping unhandled.
+      final origin = _shareOrigin(context);
+      final result = await service.exportToJson();
+      final json = result.valueOrNull;
+      if (json == null) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Export failed')),
+        );
+        return;
+      }
+      final outcome = await saveTextFile(
+        fileName: 'commonplace-backup.json',
+        contents: json,
+        sharePositionOrigin: origin,
+      );
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            outcome == FileSaveOutcome.dismissed
+                ? 'Export cancelled'
+                : 'Export ready',
+          ),
+        ),
+      );
+    } on Object catch (e) {
+      AppLogger.error('Export failed', tag: 'SettingsScreen', error: e);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Export failed')),
+      );
+    }
+  }
+
+  /// Computes the global rect of this screen to anchor the iPad share popover.
+  Rect? _shareOrigin(BuildContext context) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) {
+      return null;
+    }
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
+  Future<void> _handleImport(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final service = context.read<DataTransferService>();
+    final entriesCubit = context.read<EntriesListCubit>();
+    final tagsCubit = context.read<TagsCubit>();
+
+    try {
+      final contents = await pickJsonFileContents();
+      if (contents == null) return; // User cancelled.
+
+      if (!context.mounted) return;
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Import backup'),
+          content: const Text(
+            'This merges the backup into your library: existing items are '
+            'updated and new ones are added. Nothing currently in the app is '
+            'deleted.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Import'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+
+      final result = await service.importFromJson(contents);
+      final summary = result.valueOrNull;
+      if (summary == null) {
+        // Surface the specific reason (e.g. wrong/old/corrupt file).
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(result.errorOrNull?.message ?? 'Import failed'),
+          ),
+        );
+        return;
+      }
+      await entriesCubit.loadEntries();
+      await tagsCubit.loadTags();
+      // Imported categories are written to the DB but there is no category
+      // cubit/UI to go stale yet. When a category list or picker is added,
+      // refresh it here so imported categories appear without an app restart.
+      messenger.showSnackBar(
+        SnackBar(content: Text('Imported ${summary.entries} entries')),
+      );
+    } on Object catch (e) {
+      AppLogger.error('Import failed', tag: 'SettingsScreen', error: e);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Import failed')),
+      );
+    }
   }
 
   void _showThemeSelector(BuildContext context) {

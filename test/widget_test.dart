@@ -4,6 +4,7 @@
 // database and verifies it boots without throwing.
 
 import 'package:common_place_book/app/app.dart';
+import 'package:common_place_book/core/app_info.dart';
 import 'package:common_place_book/core/database/database.dart';
 import 'package:common_place_book/core/database/database_provider.dart';
 import 'package:drift/native.dart';
@@ -24,7 +25,9 @@ void main() {
   });
 
   testWidgets('App boots and renders a MaterialApp', (tester) async {
-    await tester.pumpWidget(const CommonPlaceBookApp());
+    await tester.pumpWidget(
+      const CommonPlaceBookApp(appInfo: AppInfo(version: 'test')),
+    );
     await tester.pumpAndSettle();
 
     expect(find.byType(MaterialApp), findsOneWidget);
