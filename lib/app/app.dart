@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../core/app_info.dart';
 import '../core/database/database_provider.dart';
 import '../features/data_transfer/data/data_transfer_service.dart';
 import '../features/data_transfer/data/local_backup_repository.dart';
@@ -15,7 +16,9 @@ import 'router.dart';
 import 'theme/app_theme.dart';
 
 class CommonPlaceBookApp extends StatelessWidget {
-  const CommonPlaceBookApp({super.key});
+  const CommonPlaceBookApp({required this.appInfo, super.key});
+
+  final AppInfo appInfo;
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +30,9 @@ class CommonPlaceBookApp extends StatelessWidget {
 
     return MultiRepositoryProvider(
       providers: [
+        RepositoryProvider<AppInfo>(
+          create: (_) => appInfo,
+        ),
         // Provide as abstract types for dependency inversion
         RepositoryProvider<EntryRepository>(
           create: (_) => entryRepository,
@@ -38,8 +44,10 @@ class CommonPlaceBookApp extends StatelessWidget {
           create: (_) => LocalBackupRepository(database),
         ),
         RepositoryProvider<DataTransferService>(
-          create: (context) =>
-              DataTransferService(context.read<BackupRepository>()),
+          create: (context) => DataTransferService(
+            context.read<BackupRepository>(),
+            appVersion: appInfo.version,
+          ),
         ),
       ],
       child: MultiBlocProvider(

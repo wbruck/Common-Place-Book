@@ -21,6 +21,9 @@ const int kEntryCreatedAt = 333333;
 const int kEntryUpdatedAt = 444444;
 const int kEntryLastViewedAt = 555555;
 
+/// Distinguishable app version injected into the service under test.
+const String kTestAppVersion = '9.9.9-test';
+
 /// Creates a fresh in-memory database.
 AppDatabase newDb() => AppDatabase.forTesting(NativeDatabase.memory());
 
@@ -84,7 +87,7 @@ Future<void> seedSampleData(AppDatabase db) async {
 
 /// Builds a service backed by the given database's [LocalBackupRepository].
 DataTransferService _service(AppDatabase db) =>
-    DataTransferService(LocalBackupRepository(db));
+    DataTransferService(LocalBackupRepository(db), appVersion: kTestAppVersion);
 
 /// Exports [db], unwrapping the [Result] (fails the test on error).
 Future<String> _export(AppDatabase db) async =>
@@ -560,7 +563,7 @@ void main() {
 
         expect(map['formatVersion'], kBackupFormatVersion);
         expect(map['app'], 'common_place_book');
-        expect(map['appVersion'], '1.0.0');
+        expect(map['appVersion'], kTestAppVersion);
         expect(map['exportedAt'], isA<String>());
 
         final counts = map['counts']! as Map<String, Object?>;

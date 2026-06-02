@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/app_info.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../data_transfer/data/data_transfer_service.dart';
 import '../../../data_transfer/data/file_save/file_save.dart';
@@ -34,10 +35,10 @@ class SettingsScreen extends StatelessWidget {
 
           // About section
           _buildSectionHeader(context, 'About'),
-          const ListTile(
-            leading: Icon(Icons.info_outline),
-            title: Text('Version'),
-            subtitle: Text('1.0.0'),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text('Version'),
+            subtitle: Text(context.read<AppInfo>().version),
           ),
           ListTile(
             leading: const Icon(Icons.book_outlined),
@@ -179,6 +180,9 @@ class SettingsScreen extends StatelessWidget {
       }
       await entriesCubit.loadEntries();
       await tagsCubit.loadTags();
+      // Imported categories are written to the DB but there is no category
+      // cubit/UI to go stale yet. When a category list or picker is added,
+      // refresh it here so imported categories appear without an app restart.
       messenger.showSnackBar(
         SnackBar(content: Text('Imported ${summary.entries} entries')),
       );

@@ -20,15 +20,16 @@ const String _logTag = 'DataTransfer';
 /// Persistence is delegated to a [BackupRepository] so this service stays free
 /// of Drift specifics; results are returned as a [Result] rather than thrown.
 class DataTransferService {
-  DataTransferService(this._repo);
+  DataTransferService(this._repo, {this.appVersion = 'unknown'});
 
   final BackupRepository _repo;
 
+  /// The application version embedded in exports (injected from `package_info`
+  /// at the composition root so it tracks the real build).
+  final String appVersion;
+
   /// The application identifier embedded in exports.
   static const String _appId = 'common_place_book';
-
-  /// The application version embedded in exports.
-  static const String _appVersion = '1.0.0';
 
   /// Reads every user-data table and returns a pretty-printed JSON string in
   /// the backup format, or a [DataTransferFailure] if the read fails.
@@ -39,7 +40,7 @@ class DataTransferService {
       final map = <String, Object?>{
         'formatVersion': kBackupFormatVersion,
         'app': _appId,
-        'appVersion': _appVersion,
+        'appVersion': appVersion,
         'schemaVersion': data.schemaVersion,
         'exportedAt': DateTime.now().toIso8601String(),
         'counts': <String, Object?>{

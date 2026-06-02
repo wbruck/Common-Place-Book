@@ -30,6 +30,7 @@ dependencies:
   path: ^1.8.3
   file_picker: ^8.1.6
   share_plus: ^10.1.4
+  package_info_plus: ^8.1.0
 
   # UI
   google_fonts: ^6.1.0
