@@ -1,4 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../../core/utils/app_logger.dart';
+import '../../../data_transfer/data/data_transfer_service.dart';
+import '../../../data_transfer/data/file_save/file_save.dart';
+import '../../../data_transfer/data/json_file_picker.dart';
+import '../../../entries/presentation/bloc/entries_list_cubit.dart';
+import '../../../tags/presentation/bloc/tags_cubit.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -41,17 +49,17 @@ class SettingsScreen extends StatelessWidget {
 
           // Data section
           _buildSectionHeader(context, 'Data'),
-          const ListTile(
-            leading: Icon(Icons.upload_outlined),
-            title: Text('Export entries'),
-            subtitle: Text('Coming soon'),
-            enabled: false,
+          ListTile(
+            leading: const Icon(Icons.upload_outlined),
+            title: const Text('Export entries'),
+            subtitle: const Text('Save a backup file'),
+            onTap: () => _handleExport(context),
           ),
-          const ListTile(
-            leading: Icon(Icons.download_outlined),
-            title: Text('Import entries'),
-            subtitle: Text('Coming soon'),
-            enabled: false,
+          ListTile(
+            leading: const Icon(Icons.download_outlined),
+            title: const Text('Import entries'),
+            subtitle: const Text('Restore from a backup file'),
+            onTap: () => _handleImport(context),
           ),
           const ListTile(
             leading: Icon(Icons.cloud_outlined),
@@ -74,6 +82,96 @@ class SettingsScreen extends StatelessWidget {
             ),
       ),
     );
+  }
+
+  Future<void> _handleExport(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final service = context.read<DataTransferService>();
+    // Anchor the iPad share popover so share_plus does not crash on iPad (it
+    // requires a sharePositionOrigin there).
+    final origin = _shareOrigin(context);
+    try {
+      final json = await service.exportToJson();
+      await saveTextFile(
+        fileName: 'commonplace-backup.json',
+        contents: json,
+        sharePositionOrigin: origin,
+      );
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Export ready')),
+      );
+    } on Object catch (e) {
+      AppLogger.error('Export failed', tag: 'SettingsScreen', error: e);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Export failed')),
+      );
+    }
+  }
+
+  /// Computes the global rect of this screen to anchor the iPad share popover.
+  Rect? _shareOrigin(BuildContext context) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) {
+      return null;
+    }
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
+  Future<void> _handleImport(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final service = context.read<DataTransferService>();
+    final entriesCubit = context.read<EntriesListCubit>();
+    final tagsCubit = context.read<TagsCubit>();
+
+    final contents = await pickJsonFileContents();
+    if (contents == null) return; // User cancelled.
+
+    if (!context.mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Import entries'),
+        content: const Text(
+          'Import will add/overwrite entries from the backup. Continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Import'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      final summary = await service.importFromJson(contents);
+      await entriesCubit.loadEntries();
+      await tagsCubit.loadTags();
+      messenger.showSnackBar(
+        SnackBar(content: Text('Imported ${summary.entries} entries')),
+      );
+    } on FormatException catch (e) {
+      AppLogger.error('Import failed', tag: 'SettingsScreen', error: e);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            e.message.isNotEmpty
+                ? e.message
+                : 'This file is not a valid Common Place Book backup.',
+          ),
+        ),
+      );
+    } on Object catch (e) {
+      AppLogger.error('Import failed', tag: 'SettingsScreen', error: e);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Import failed')),
+      );
+    }
   }
 
   void _showThemeSelector(BuildContext context) {
