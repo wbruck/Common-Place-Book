@@ -95,10 +95,14 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.dark,
       colorScheme: const ColorScheme.dark(
-        primary: AppColors.primaryDark,
-        onPrimary: Colors.white,
-        secondary: AppColors.accentDark,
-        onSecondary: Colors.white,
+        // Use the dark-theme palette (light taupe/gold). M3 derives button text
+        // from `primary`, so this is what makes button text legible on the dark
+        // background; `onPrimary`/`onSecondary` must therefore be dark to keep
+        // text/icons readable on filled (primary/secondary) surfaces.
+        primary: AppColors.primaryDarkTheme,
+        onPrimary: AppColors.backgroundDark,
+        secondary: AppColors.accentDarkTheme,
+        onSecondary: AppColors.backgroundDark,
         surface: AppColors.surfaceDark,
         onSurface: AppColors.textPrimaryDark,
         surfaceContainerHighest: AppColors.backgroundDark,
@@ -137,8 +141,11 @@ class AppTheme {
         side: BorderSide.none,
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: AppColors.primaryDark,
-        foregroundColor: Colors.white,
+        // Coherent with the dark colorScheme: light taupe background with a
+        // dark foreground (matching primary/onPrimary) instead of the old
+        // near-black `primaryDark` fill.
+        backgroundColor: AppColors.primaryDarkTheme,
+        foregroundColor: AppColors.backgroundDark,
         elevation: 4,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -157,7 +164,8 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primaryDark, width: 2),
+          borderSide:
+              const BorderSide(color: AppColors.primaryDarkTheme, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,

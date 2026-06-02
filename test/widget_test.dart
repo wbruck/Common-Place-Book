@@ -7,6 +7,7 @@ import 'package:common_place_book/app/app.dart';
 import 'package:common_place_book/core/app_info.dart';
 import 'package:common_place_book/core/database/database.dart';
 import 'package:common_place_book/core/database/database_provider.dart';
+import 'package:common_place_book/features/settings/data/local_settings_repository.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,7 +27,10 @@ void main() {
 
   testWidgets('App boots and renders a MaterialApp', (tester) async {
     await tester.pumpWidget(
-      const CommonPlaceBookApp(appInfo: AppInfo(version: 'test')),
+      CommonPlaceBookApp(
+        appInfo: const AppInfo(version: 'test'),
+        settingsRepository: LocalSettingsRepository(database),
+      ),
     );
     await tester.pumpAndSettle();
 

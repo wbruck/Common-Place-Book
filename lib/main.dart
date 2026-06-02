@@ -9,6 +9,7 @@ import 'core/database/database.dart';
 import 'core/database/database_provider.dart';
 import 'core/database/tombstone_purge_service.dart';
 import 'core/utils/app_logger.dart';
+import 'features/settings/data/local_settings_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,7 +39,16 @@ void main() async {
   // Resolve the app version once so it has a single source of truth.
   final packageInfo = await PackageInfo.fromPlatform();
 
+  // Read the persisted theme mode before the first frame so the app paints in
+  // the chosen theme immediately (no flash of the wrong theme on launch).
+  final settingsRepository = LocalSettingsRepository(database);
+  final initialThemeMode = await settingsRepository.loadThemeMode();
+
   runApp(
-    CommonPlaceBookApp(appInfo: AppInfo(version: packageInfo.version)),
+    CommonPlaceBookApp(
+      appInfo: AppInfo(version: packageInfo.version),
+      settingsRepository: settingsRepository,
+      initialThemeMode: initialThemeMode,
+    ),
   );
 }

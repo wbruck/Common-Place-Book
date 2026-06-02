@@ -8,13 +8,13 @@ import '../../../data_transfer/data/file_save/file_save.dart';
 import '../../../data_transfer/data/json_file_picker.dart';
 import '../../../entries/presentation/bloc/entries_list_cubit.dart';
 import '../../../tags/presentation/bloc/tags_cubit.dart';
+import '../bloc/theme_cubit.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
@@ -23,12 +23,14 @@ class SettingsScreen extends StatelessWidget {
         children: [
           // Appearance section
           _buildSectionHeader(context, 'Appearance'),
-          ListTile(
-            leading: const Icon(Icons.brightness_6_outlined),
-            title: const Text('Theme'),
-            subtitle: const Text('System default'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showThemeSelector(context),
+          BlocBuilder<ThemeCubit, ThemeMode>(
+            builder: (context, themeMode) => ListTile(
+              leading: const Icon(Icons.brightness_6_outlined),
+              title: const Text('Theme'),
+              subtitle: Text(_themeModeLabel(themeMode)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showThemeSelector(context),
+            ),
           ),
 
           const Divider(),
@@ -194,29 +196,42 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
+  /// Human-readable label for a [ThemeMode], shown both as the Theme tile
+  /// subtitle and as the selector option titles.
+  static String _themeModeLabel(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.system:
+        return 'System default';
+      case ThemeMode.light:
+        return 'Light';
+      case ThemeMode.dark:
+        return 'Dark';
+    }
+  }
+
   void _showThemeSelector(BuildContext context) {
+    final themeCubit = context.read<ThemeCubit>();
+    final current = themeCubit.state;
+
+    Widget option(IconData icon, ThemeMode mode) => ListTile(
+          leading: Icon(icon),
+          title: Text(_themeModeLabel(mode)),
+          trailing: mode == current ? const Icon(Icons.check) : null,
+          onTap: () {
+            themeCubit.setThemeMode(mode);
+            Navigator.pop(context);
+          },
+        );
+
     showModalBottomSheet<void>(
       context: context,
-      builder: (context) => SafeArea(
+      builder: (sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.brightness_auto),
-              title: const Text('System default'),
-              trailing: const Icon(Icons.check),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              leading: const Icon(Icons.light_mode),
-              title: const Text('Light'),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              leading: const Icon(Icons.dark_mode),
-              title: const Text('Dark'),
-              onTap: () => Navigator.pop(context),
-            ),
+            option(Icons.brightness_auto, ThemeMode.system),
+            option(Icons.light_mode, ThemeMode.light),
+            option(Icons.dark_mode, ThemeMode.dark),
           ],
         ),
       ),
