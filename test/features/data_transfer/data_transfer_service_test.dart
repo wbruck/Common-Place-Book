@@ -72,15 +72,17 @@ Future<void> seedSampleData(AppDatabase db) async {
       );
 
   await db.into(db.entryTags).insert(
-        const EntryTagsCompanion(
-          entryId: Value('entry-1'),
-          tagId: Value('tag-a'),
+        EntryTagsCompanion.insert(
+          id: 'et-a',
+          entryId: 'entry-1',
+          tagId: 'tag-a',
         ),
       );
   await db.into(db.entryTags).insert(
-        const EntryTagsCompanion(
-          entryId: Value('entry-1'),
-          tagId: Value('tag-b'),
+        EntryTagsCompanion.insert(
+          id: 'et-b',
+          entryId: 'entry-1',
+          tagId: 'tag-b',
         ),
       );
 }
