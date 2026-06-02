@@ -121,6 +121,12 @@ class DataTransferService {
   /// Parses [jsonString] and UPSERTs its rows into the database, preserving ids
   /// and all timestamps exactly.
   ///
+  /// This is intentionally a non-destructive **merge**, not a replace: existing
+  /// rows are updated and new rows added, but nothing already in the database is
+  /// deleted. Categories are matched by id only (no name reconciliation), so a
+  /// same-named category created independently on another device imports as a
+  /// distinct row by design.
+  ///
   /// Throws a [FormatException] if the payload is not a JSON object, its
   /// `formatVersion` is not [kBackupFormatVersion], a table section is not a
   /// JSON array, or a required field on any row is missing/null/the wrong type.

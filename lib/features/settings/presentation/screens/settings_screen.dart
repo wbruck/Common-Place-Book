@@ -58,7 +58,7 @@ class SettingsScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.download_outlined),
             title: const Text('Import entries'),
-            subtitle: const Text('Restore from a backup file'),
+            subtitle: const Text('Merge a backup into your library'),
             onTap: () => _handleImport(context),
           ),
           const ListTile(
@@ -138,9 +138,11 @@ class SettingsScreen extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Import entries'),
+        title: const Text('Import backup'),
         content: const Text(
-          'Import will add/overwrite entries from the backup. Continue?',
+          'This merges the backup into your library: existing items are '
+          'updated and new ones are added. Nothing currently in the app is '
+          'deleted.',
         ),
         actions: [
           TextButton(
