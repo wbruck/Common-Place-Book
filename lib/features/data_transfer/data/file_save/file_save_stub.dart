@@ -1,11 +1,13 @@
 import 'dart:ui';
 
+import 'file_save_result.dart';
+
 /// Fallback implementation used when neither `dart:io` nor `dart:html` is
 /// available. Saving a text file is not supported on such a platform.
 ///
 /// [sharePositionOrigin] is accepted only for signature parity with the other
 /// implementations; this stub never uses it.
-Future<void> saveTextFile({
+Future<FileSaveOutcome> saveTextFile({
   required String fileName,
   required String contents,
   Rect? sharePositionOrigin,

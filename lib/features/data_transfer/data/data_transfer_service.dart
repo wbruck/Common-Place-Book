@@ -152,6 +152,7 @@ class DataTransferService {
     final entries = _asMapList(decoded['entries']);
     final entryTags = _asMapList(decoded['entryTags']);
 
+    var tagsWritten = 0;
     await _db.transaction(() async {
       // Defer FK enforcement to commit time so the natural insertion order and
       // category parent self-references can't cause transient FK violations.
@@ -199,6 +200,7 @@ class DataTransferService {
                 createdAt: Value(_reqInt(m, 'tags', 'createdAt')),
               ),
             );
+        tagsWritten++;
       }
 
       for (final m in entries) {
@@ -232,7 +234,9 @@ class DataTransferService {
 
     final summary = ImportSummary(
       categories: categories.length,
-      tags: tags.length,
+      // Reconciled tags (name already owned by a different id) are skipped, so
+      // report the number of tag rows actually written, not the payload length.
+      tags: tagsWritten,
       entries: entries.length,
       entryTags: entryTags.length,
     );

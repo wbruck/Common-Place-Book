@@ -277,7 +277,7 @@ void main() {
           'entryTags': const <Object?>[],
         });
 
-        expect(
+        await expectLater(
           () => DataTransferService(db).importFromJson(json),
           throwsA(isA<FormatException>()),
         );
@@ -290,7 +290,7 @@ void main() {
         () async {
       final db = newDb();
       try {
-        expect(
+        await expectLater(
           () => DataTransferService(db).importFromJson('[1, 2, 3]'),
           throwsA(isA<FormatException>()),
         );
@@ -302,7 +302,7 @@ void main() {
     test('importing malformed JSON throws', () async {
       final db = newDb();
       try {
-        expect(
+        await expectLater(
           () => DataTransferService(db).importFromJson('{not valid json'),
           throwsA(isA<FormatException>()),
         );
@@ -336,6 +336,9 @@ void main() {
 
         // The import succeeded for all tables (no rollback / data loss).
         expect(summary.entries, 1);
+        // Only the non-colliding tag-b was written; tag-a was reconciled onto
+        // the existing 'inspiration' row, so the count reflects rows written.
+        expect(summary.tags, 1);
         expect(
           (await db2.select(db2.categories).get()).length,
           6,

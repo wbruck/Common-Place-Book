@@ -87,18 +87,26 @@ class SettingsScreen extends StatelessWidget {
   Future<void> _handleExport(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
     final service = context.read<DataTransferService>();
-    // Anchor the iPad share popover so share_plus does not crash on iPad (it
-    // requires a sharePositionOrigin there).
-    final origin = _shareOrigin(context);
     try {
+      // Anchor the iPad share popover so share_plus does not crash on iPad (it
+      // requires a sharePositionOrigin there). Computed before the first await
+      // so it is safe to use the context, and inside the try so a render-object
+      // failure surfaces as 'Export failed' rather than escaping unhandled.
+      final origin = _shareOrigin(context);
       final json = await service.exportToJson();
-      await saveTextFile(
+      final outcome = await saveTextFile(
         fileName: 'commonplace-backup.json',
         contents: json,
         sharePositionOrigin: origin,
       );
       messenger.showSnackBar(
-        const SnackBar(content: Text('Export ready')),
+        SnackBar(
+          content: Text(
+            outcome == FileSaveOutcome.dismissed
+                ? 'Export cancelled'
+                : 'Export ready',
+          ),
+        ),
       );
     } on Object catch (e) {
       AppLogger.error('Export failed', tag: 'SettingsScreen', error: e);
