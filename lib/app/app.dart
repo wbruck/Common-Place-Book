@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../core/database/database_provider.dart';
 import '../features/data_transfer/data/data_transfer_service.dart';
+import '../features/data_transfer/data/local_backup_repository.dart';
+import '../features/data_transfer/domain/backup_repository.dart';
 import '../features/entries/data/repositories/entry_repository.dart';
 import '../features/entries/data/repositories/local_entry_repository.dart';
 import '../features/entries/presentation/bloc/entries_list_cubit.dart';
@@ -32,8 +34,12 @@ class CommonPlaceBookApp extends StatelessWidget {
         RepositoryProvider<TagRepository>(
           create: (_) => tagRepository,
         ),
+        RepositoryProvider<BackupRepository>(
+          create: (_) => LocalBackupRepository(database),
+        ),
         RepositoryProvider<DataTransferService>(
-          create: (_) => DataTransferService(database),
+          create: (context) =>
+              DataTransferService(context.read<BackupRepository>()),
         ),
       ],
       child: MultiBlocProvider(

@@ -7,6 +7,8 @@ import 'dart:convert';
 
 import 'package:common_place_book/core/database/database.dart';
 import 'package:common_place_book/features/data_transfer/data/data_transfer_service.dart';
+import 'package:common_place_book/features/data_transfer/data/local_backup_repository.dart';
+import 'package:common_place_book/features/data_transfer/domain/backup_data.dart';
 import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -80,6 +82,18 @@ Future<void> seedSampleData(AppDatabase db) async {
       );
 }
 
+/// Builds a service backed by the given database's [LocalBackupRepository].
+DataTransferService _service(AppDatabase db) =>
+    DataTransferService(LocalBackupRepository(db));
+
+/// Exports [db], unwrapping the [Result] (fails the test on error).
+Future<String> _export(AppDatabase db) async =>
+    (await _service(db).exportToJson()).getOrThrow();
+
+/// Imports [json] into [db], unwrapping the [Result] (fails the test on error).
+Future<ImportSummary> _import(AppDatabase db, String json) async =>
+    (await _service(db).importFromJson(json)).getOrThrow();
+
 void main() {
   group('DataTransferService', () {
     test('round-trip preserves all rows and field values exactly', () async {
@@ -88,8 +102,8 @@ void main() {
       try {
         await seedSampleData(db1);
 
-        final json = await DataTransferService(db1).exportToJson();
-        final summary = await DataTransferService(db2).importFromJson(json);
+        final json = await _export(db1);
+        final summary = await _import(db2, json);
 
         // Summary reflects what the export contained. db1 was created with the
         // 5 default seed categories, plus the 1 custom category we inserted, so
@@ -166,8 +180,8 @@ void main() {
               ),
             );
 
-        final json = await DataTransferService(db1).exportToJson();
-        await DataTransferService(db2).importFromJson(json);
+        final json = await _export(db1);
+        await _import(db2, json);
 
         final entry = await db2.select(db2.entries).getSingle();
         expect(entry.id, 'plain');
@@ -188,11 +202,10 @@ void main() {
       final db2 = newDb();
       try {
         await seedSampleData(db1);
-        final json = await DataTransferService(db1).exportToJson();
+        final json = await _export(db1);
 
-        final service = DataTransferService(db2);
-        await service.importFromJson(json);
-        await service.importFromJson(json); // second import == upsert
+        await _import(db2, json);
+        await _import(db2, json); // second import == upsert
 
         // Custom category present exactly once (plus the 5 default seeds).
         final categoryCount = (await db2.select(db2.categories).get()).length;
@@ -251,7 +264,7 @@ void main() {
           'entryTags': const <Object?>[],
         });
 
-        await DataTransferService(db).importFromJson(json);
+        await _import(db, json);
 
         final entry = await db.select(db.entries).getSingle();
         expect(entry.content, 'NEW content');
@@ -277,10 +290,9 @@ void main() {
           'entryTags': const <Object?>[],
         });
 
-        await expectLater(
-          () => DataTransferService(db).importFromJson(json),
-          throwsA(isA<FormatException>()),
-        );
+        final result = await _service(db).importFromJson(json);
+        expect(result.isFailure, isTrue);
+        expect(result.errorOrNull?.kind, DataTransferErrorKind.invalidBackup);
       } finally {
         await db.close();
       }
@@ -290,10 +302,10 @@ void main() {
         () async {
       final db = newDb();
       try {
-        await expectLater(
-          () => DataTransferService(db).importFromJson('[1, 2, 3]'),
-          throwsA(isA<FormatException>()),
-        );
+        final result =
+            await _service(db).importFromJson('[1, 2, 3]');
+        expect(result.isFailure, isTrue);
+        expect(result.errorOrNull?.kind, DataTransferErrorKind.invalidBackup);
       } finally {
         await db.close();
       }
@@ -302,10 +314,10 @@ void main() {
     test('importing malformed JSON throws', () async {
       final db = newDb();
       try {
-        await expectLater(
-          () => DataTransferService(db).importFromJson('{not valid json'),
-          throwsA(isA<FormatException>()),
-        );
+        final result =
+            await _service(db).importFromJson('{not valid json');
+        expect(result.isFailure, isTrue);
+        expect(result.errorOrNull?.kind, DataTransferErrorKind.invalidBackup);
       } finally {
         await db.close();
       }
@@ -318,7 +330,7 @@ void main() {
       final db2 = newDb();
       try {
         await seedSampleData(db1);
-        final json = await DataTransferService(db1).exportToJson();
+        final json = await _export(db1);
 
         // Pre-seed db2 with a tag named 'inspiration' but under a DIFFERENT id
         // than the one in the backup ('tag-a'). The backup also contains an
@@ -332,7 +344,7 @@ void main() {
               ),
             );
 
-        final summary = await DataTransferService(db2).importFromJson(json);
+        final summary = await _import(db2, json);
 
         // The import succeeded for all tables (no rollback / data loss).
         expect(summary.entries, 1);
@@ -397,7 +409,7 @@ void main() {
           'entryTags': const <Object?>[],
         });
 
-        await DataTransferService(db).importFromJson(json);
+        await _import(db, json);
 
         final entry = await db.select(db.entries).getSingle();
         expect(entry.createdAt, 333333);
@@ -430,10 +442,9 @@ void main() {
           'entryTags': const <Object?>[],
         });
 
-        await expectLater(
-          DataTransferService(db).importFromJson(json),
-          throwsA(isA<FormatException>()),
-        );
+        final result = await _service(db).importFromJson(json);
+        expect(result.isFailure, isTrue);
+        expect(result.errorOrNull?.kind, DataTransferErrorKind.invalidBackup);
       } finally {
         await db.close();
       }
@@ -461,10 +472,9 @@ void main() {
           'entryTags': const <Object?>[],
         });
 
-        await expectLater(
-          DataTransferService(db).importFromJson(json),
-          throwsA(isA<FormatException>()),
-        );
+        final result = await _service(db).importFromJson(json);
+        expect(result.isFailure, isTrue);
+        expect(result.errorOrNull?.kind, DataTransferErrorKind.invalidBackup);
       } finally {
         await db.close();
       }
@@ -491,10 +501,9 @@ void main() {
           'entryTags': const <Object?>[],
         });
 
-        await expectLater(
-          DataTransferService(db).importFromJson(json),
-          throwsA(isA<FormatException>()),
-        );
+        final result = await _service(db).importFromJson(json);
+        expect(result.isFailure, isTrue);
+        expect(result.errorOrNull?.kind, DataTransferErrorKind.invalidBackup);
       } finally {
         await db.close();
       }
@@ -529,10 +538,9 @@ void main() {
           'entryTags': const <Object?>[],
         });
 
-        await expectLater(
-          DataTransferService(db).importFromJson(json),
-          throwsA(isA<FormatException>()),
-        );
+        final result = await _service(db).importFromJson(json);
+        expect(result.isFailure, isTrue);
+        expect(result.errorOrNull?.kind, DataTransferErrorKind.invalidBackup);
 
         final good = await (db.select(db.categories)
               ..where((t) => t.id.equals('good')))
@@ -547,7 +555,7 @@ void main() {
       final db = newDb();
       try {
         await seedSampleData(db);
-        final json = await DataTransferService(db).exportToJson();
+        final json = await _export(db);
         final map = jsonDecode(json) as Map<String, Object?>;
 
         expect(map['formatVersion'], kBackupFormatVersion);
@@ -576,6 +584,119 @@ void main() {
         expect(entryTags.length, 2);
         final firstPair = entryTags.first! as Map<String, Object?>;
         expect(firstPair.keys.toSet(), {'entryId', 'tagId'});
+      } finally {
+        await db.close();
+      }
+    });
+
+    test('export stamps the database schemaVersion', () async {
+      final db = newDb();
+      try {
+        final json = await _export(db);
+        final map = jsonDecode(json) as Map<String, Object?>;
+        expect(map['schemaVersion'], db.schemaVersion);
+      } finally {
+        await db.close();
+      }
+    });
+
+    test('import rejects a backup created by a different app', () async {
+      final db = newDb();
+      try {
+        final json = jsonEncode(<String, Object?>{
+          'formatVersion': kBackupFormatVersion,
+          'app': 'some_other_app',
+          'categories': const <Object?>[],
+          'tags': const <Object?>[],
+          'entries': const <Object?>[],
+          'entryTags': const <Object?>[],
+        });
+        final result = await _service(db).importFromJson(json);
+        expect(result.isFailure, isTrue);
+        expect(result.errorOrNull?.kind, DataTransferErrorKind.invalidBackup);
+      } finally {
+        await db.close();
+      }
+    });
+
+    test('import rejects a backup from a newer schemaVersion', () async {
+      final db = newDb();
+      try {
+        final json = jsonEncode(<String, Object?>{
+          'formatVersion': kBackupFormatVersion,
+          'app': 'common_place_book',
+          'schemaVersion': db.schemaVersion + 1,
+          'categories': const <Object?>[],
+          'tags': const <Object?>[],
+          'entries': const <Object?>[],
+          'entryTags': const <Object?>[],
+        });
+        final result = await _service(db).importFromJson(json);
+        expect(result.isFailure, isTrue);
+        expect(result.errorOrNull?.kind, DataTransferErrorKind.invalidBackup);
+      } finally {
+        await db.close();
+      }
+    });
+
+    test('import rejects a backup whose counts disagree with its arrays',
+        () async {
+      final db = newDb();
+      try {
+        final json = jsonEncode(<String, Object?>{
+          'formatVersion': kBackupFormatVersion,
+          'app': 'common_place_book',
+          'counts': const <String, Object?>{
+            'categories': 0,
+            'tags': 5, // lies: the tags array below is empty
+            'entries': 0,
+            'entryTags': 0,
+          },
+          'categories': const <Object?>[],
+          'tags': const <Object?>[],
+          'entries': const <Object?>[],
+          'entryTags': const <Object?>[],
+        });
+        final result = await _service(db).importFromJson(json);
+        expect(result.isFailure, isTrue);
+        expect(result.errorOrNull?.kind, DataTransferErrorKind.invalidBackup);
+      } finally {
+        await db.close();
+      }
+    });
+
+    test('import rejects a dangling entry.categoryId without writing rows',
+        () async {
+      final db = newDb();
+      try {
+        final json = jsonEncode(<String, Object?>{
+          'formatVersion': kBackupFormatVersion,
+          'app': 'common_place_book',
+          'categories': const <Object?>[],
+          'tags': const <Object?>[],
+          'entries': <Object?>[
+            <String, Object?>{
+              'id': 'orphan',
+              'content': 'references a missing category',
+              'categoryId': 'does-not-exist',
+              'createdAt': 1,
+              'updatedAt': 1,
+              'viewCount': 0,
+              'isFavorite': false,
+            },
+          ],
+          'entryTags': const <Object?>[],
+        });
+
+        final result = await _service(db).importFromJson(json);
+        expect(result.isFailure, isTrue);
+        expect(result.errorOrNull?.kind, DataTransferErrorKind.invalidBackup);
+
+        // The bad reference is rejected up front, before any write.
+        final orphan = await (db.select(db.entries)
+              ..where((t) => t.id.equals('orphan')))
+            .getSingleOrNull();
+        expect(orphan, isNull);
       } finally {
         await db.close();
       }

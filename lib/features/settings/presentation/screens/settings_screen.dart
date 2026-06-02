@@ -93,7 +93,14 @@ class SettingsScreen extends StatelessWidget {
       // so it is safe to use the context, and inside the try so a render-object
       // failure surfaces as 'Export failed' rather than escaping unhandled.
       final origin = _shareOrigin(context);
-      final json = await service.exportToJson();
+      final result = await service.exportToJson();
+      final json = result.valueOrNull;
+      if (json == null) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Export failed')),
+        );
+        return;
+      }
       final outcome = await saveTextFile(
         fileName: 'commonplace-backup.json',
         contents: json,
@@ -131,50 +138,49 @@ class SettingsScreen extends StatelessWidget {
     final entriesCubit = context.read<EntriesListCubit>();
     final tagsCubit = context.read<TagsCubit>();
 
-    final contents = await pickJsonFileContents();
-    if (contents == null) return; // User cancelled.
-
-    if (!context.mounted) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Import backup'),
-        content: const Text(
-          'This merges the backup into your library: existing items are '
-          'updated and new ones are added. Nothing currently in the app is '
-          'deleted.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Import'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
     try {
-      final summary = await service.importFromJson(contents);
+      final contents = await pickJsonFileContents();
+      if (contents == null) return; // User cancelled.
+
+      if (!context.mounted) return;
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Import backup'),
+          content: const Text(
+            'This merges the backup into your library: existing items are '
+            'updated and new ones are added. Nothing currently in the app is '
+            'deleted.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Import'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+
+      final result = await service.importFromJson(contents);
+      final summary = result.valueOrNull;
+      if (summary == null) {
+        // Surface the specific reason (e.g. wrong/old/corrupt file).
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(result.errorOrNull?.message ?? 'Import failed'),
+          ),
+        );
+        return;
+      }
       await entriesCubit.loadEntries();
       await tagsCubit.loadTags();
       messenger.showSnackBar(
         SnackBar(content: Text('Imported ${summary.entries} entries')),
-      );
-    } on FormatException catch (e) {
-      AppLogger.error('Import failed', tag: 'SettingsScreen', error: e);
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            e.message.isNotEmpty
-                ? e.message
-                : 'This file is not a valid Common Place Book backup.',
-          ),
-        ),
       );
     } on Object catch (e) {
       AppLogger.error('Import failed', tag: 'SettingsScreen', error: e);

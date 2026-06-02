@@ -1,35 +1,14 @@
 import 'dart:convert';
 
-import 'package:drift/drift.dart';
-
-import '../../../core/database/database.dart';
 import '../../../core/utils/app_logger.dart';
+import '../../../core/utils/result.dart';
+import '../domain/backup_data.dart';
+import '../domain/backup_repository.dart';
 
 /// The on-disk backup format version this service reads and writes.
 const int kBackupFormatVersion = 1;
 
 const String _logTag = 'DataTransfer';
-
-/// Summary of the rows written during an [DataTransferService.importFromJson]
-/// operation.
-class ImportSummary {
-  const ImportSummary({
-    required this.categories,
-    required this.tags,
-    required this.entries,
-    required this.entryTags,
-  });
-
-  final int categories;
-  final int tags;
-  final int entries;
-  final int entryTags;
-
-  @override
-  String toString() =>
-      'ImportSummary(categories: $categories, tags: $tags, '
-      'entries: $entries, entryTags: $entryTags)';
-}
 
 /// Serializes the local database to / from the JSON backup format.
 ///
@@ -37,10 +16,13 @@ class ImportSummary {
 /// entry_tags). Many-to-many relationships live in the `entryTags` array; tag
 /// ids are NOT embedded inside entries. `settings` is intentionally excluded.
 /// All timestamps are stored as their raw millisecond-since-epoch integers.
+///
+/// Persistence is delegated to a [BackupRepository] so this service stays free
+/// of Drift specifics; results are returned as a [Result] rather than thrown.
 class DataTransferService {
-  DataTransferService(this._db);
+  DataTransferService(this._repo);
 
-  final AppDatabase _db;
+  final BackupRepository _repo;
 
   /// The application identifier embedded in exports.
   static const String _appId = 'common_place_book';
@@ -49,76 +31,79 @@ class DataTransferService {
   static const String _appVersion = '1.0.0';
 
   /// Reads every user-data table and returns a pretty-printed JSON string in
-  /// the backup format.
-  Future<String> exportToJson() async {
-    final categories = await _db.select(_db.categories).get();
-    final tags = await _db.select(_db.tags).get();
-    final entries = await _db.select(_db.entries).get();
-    final entryTags = await _db.select(_db.entryTags).get();
+  /// the backup format, or a [DataTransferFailure] if the read fails.
+  Future<Result<String, DataTransferFailure>> exportToJson() async {
+    try {
+      final data = await _repo.readAll();
 
-    final map = <String, Object?>{
-      'formatVersion': kBackupFormatVersion,
-      'app': _appId,
-      'appVersion': _appVersion,
-      'exportedAt': DateTime.now().toIso8601String(),
-      'counts': <String, Object?>{
-        'categories': categories.length,
-        'tags': tags.length,
-        'entries': entries.length,
-        'entryTags': entryTags.length,
-      },
-      'categories': [
-        for (final c in categories)
-          <String, Object?>{
-            'id': c.id,
-            'name': c.name,
-            'parentId': c.parentId,
-            'icon': c.icon,
-            'createdAt': c.createdAt,
-          },
-      ],
-      'tags': [
-        for (final t in tags)
-          <String, Object?>{
-            'id': t.id,
-            'name': t.name,
-            'color': t.color,
-            'createdAt': t.createdAt,
-          },
-      ],
-      'entries': [
-        for (final e in entries)
-          <String, Object?>{
-            'id': e.id,
-            'content': e.content,
-            'source': e.source,
-            'categoryId': e.categoryId,
-            'createdAt': e.createdAt,
-            'updatedAt': e.updatedAt,
-            'lastViewedAt': e.lastViewedAt,
-            'viewCount': e.viewCount,
-            'isFavorite': e.isFavorite,
-          },
-      ],
-      'entryTags': [
-        for (final et in entryTags)
-          <String, Object?>{
-            'entryId': et.entryId,
-            'tagId': et.tagId,
-          },
-      ],
-    };
+      final map = <String, Object?>{
+        'formatVersion': kBackupFormatVersion,
+        'app': _appId,
+        'appVersion': _appVersion,
+        'schemaVersion': data.schemaVersion,
+        'exportedAt': DateTime.now().toIso8601String(),
+        'counts': <String, Object?>{
+          'categories': data.categories.length,
+          'tags': data.tags.length,
+          'entries': data.entries.length,
+          'entryTags': data.entryTags.length,
+        },
+        'categories': [
+          for (final c in data.categories)
+            <String, Object?>{
+              'id': c.id,
+              'name': c.name,
+              'parentId': c.parentId,
+              'icon': c.icon,
+              'createdAt': c.createdAt,
+            },
+        ],
+        'tags': [
+          for (final t in data.tags)
+            <String, Object?>{
+              'id': t.id,
+              'name': t.name,
+              'color': t.color,
+              'createdAt': t.createdAt,
+            },
+        ],
+        'entries': [
+          for (final e in data.entries)
+            <String, Object?>{
+              'id': e.id,
+              'content': e.content,
+              'source': e.source,
+              'categoryId': e.categoryId,
+              'createdAt': e.createdAt,
+              'updatedAt': e.updatedAt,
+              'lastViewedAt': e.lastViewedAt,
+              'viewCount': e.viewCount,
+              'isFavorite': e.isFavorite,
+            },
+        ],
+        'entryTags': [
+          for (final et in data.entryTags)
+            <String, Object?>{'entryId': et.entryId, 'tagId': et.tagId},
+        ],
+      };
 
-    AppLogger.info(
-      'Exported ${categories.length} categories, ${tags.length} tags, '
-      '${entries.length} entries, ${entryTags.length} entryTags',
-      tag: _logTag,
-    );
+      AppLogger.info(
+        'Exported ${data.categories.length} categories, ${data.tags.length} '
+        'tags, ${data.entries.length} entries, ${data.entryTags.length} '
+        'entryTags',
+        tag: _logTag,
+      );
 
-    return const JsonEncoder.withIndent('  ').convert(map);
+      return Success(const JsonEncoder.withIndent('  ').convert(map));
+    } on Object catch (e) {
+      AppLogger.error('Export failed', tag: _logTag, error: e);
+      return const Failure(
+        DataTransferFailure.unexpected('Could not create the backup.'),
+      );
+    }
   }
 
-  /// Parses [jsonString] and UPSERTs its rows into the database, preserving ids
+  /// Parses [jsonString] and merges its rows into the database, preserving ids
   /// and all timestamps exactly.
   ///
   /// This is intentionally a non-destructive **merge**, not a replace: existing
@@ -127,21 +112,54 @@ class DataTransferService {
   /// same-named category created independently on another device imports as a
   /// distinct row by design.
   ///
-  /// Throws a [FormatException] if the payload is not a JSON object, its
-  /// `formatVersion` is not [kBackupFormatVersion], a table section is not a
-  /// JSON array, or a required field on any row is missing/null/the wrong type.
-  ///
-  /// Rows are written inside a single transaction with deferred foreign-key
-  /// checks so insertion order and category self-references cannot trigger
-  /// transient FK violations. Because `Tags.name` is UNIQUE, an incoming tag
-  /// whose name already belongs to a different existing id is reconciled by
-  /// reusing the existing id (and remapping its `entryTags`) rather than failing
-  /// the whole import.
-  Future<ImportSummary> importFromJson(String jsonString) async {
-    final decoded = jsonDecode(jsonString) as Object?;
+  /// Returns a [DataTransferFailure] (kind [DataTransferErrorKind.invalidBackup])
+  /// when the payload is not a valid/compatible backup, or
+  /// [DataTransferErrorKind.unexpected] for an unforeseen database error; on
+  /// failure nothing is written (the merge runs in a single transaction).
+  Future<Result<ImportSummary, DataTransferFailure>> importFromJson(
+    String jsonString,
+  ) async {
+    final BackupData data;
+    try {
+      data = _parse(jsonString);
+    } on FormatException catch (e) {
+      AppLogger.error('Import rejected', tag: _logTag, error: e);
+      return Failure(DataTransferFailure.invalidBackup(_friendly(e.message)));
+    }
+
+    try {
+      final summary = await _repo.importMerge(data);
+      AppLogger.info('Imported $summary', tag: _logTag);
+      return Success(summary);
+    } on FormatException catch (e) {
+      // Referential-integrity rejection raised by the repository.
+      AppLogger.error('Import rejected', tag: _logTag, error: e);
+      return Failure(DataTransferFailure.invalidBackup(_friendly(e.message)));
+    } on Object catch (e) {
+      AppLogger.error('Import failed', tag: _logTag, error: e);
+      return const Failure(
+        DataTransferFailure.unexpected(
+          'Import failed. Your data was not changed.',
+        ),
+      );
+    }
+  }
+
+  String _friendly(String message) =>
+      message.isNotEmpty ? message : 'This file is not a valid backup.';
+
+  /// Validates the envelope and parses the payload into a [BackupData].
+  /// Throws a [FormatException] describing the first problem encountered.
+  BackupData _parse(String jsonString) {
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(jsonString) as Object?;
+    } on FormatException {
+      throw const FormatException('This file is not valid JSON.');
+    }
     if (decoded is! Map<String, Object?>) {
       throw const FormatException(
-        'Invalid backup: expected a JSON object at the top level.',
+        'This file is not a valid backup (expected a JSON object).',
       );
     }
 
@@ -153,103 +171,105 @@ class DataTransferService {
       );
     }
 
+    final app = decoded['app'];
+    if (app != null && app != _appId) {
+      throw FormatException(
+        'This backup was created by a different app ("$app").',
+      );
+    }
+
+    // schemaVersion is optional (older backups predate it). Reject backups from
+    // a newer schema we can't safely read; allow same-or-older.
+    final schemaVersion = decoded['schemaVersion'];
+    if (schemaVersion is int && schemaVersion > _repo.schemaVersion) {
+      throw FormatException(
+        'This backup was created by a newer version of the app '
+        '(schema $schemaVersion > ${_repo.schemaVersion}). Please update first.',
+      );
+    }
+
     final categories = _asMapList(decoded['categories']);
     final tags = _asMapList(decoded['tags']);
     final entries = _asMapList(decoded['entries']);
     final entryTags = _asMapList(decoded['entryTags']);
 
-    var tagsWritten = 0;
-    await _db.transaction(() async {
-      // Defer FK enforcement to commit time so the natural insertion order and
-      // category parent self-references can't cause transient FK violations.
-      await _db.customStatement('PRAGMA defer_foreign_keys = ON');
+    _checkCounts(decoded['counts'], categories, tags, entries, entryTags);
 
-      for (final m in categories) {
-        await _db.into(_db.categories).insertOnConflictUpdate(
-              CategoriesCompanion(
-                id: Value(_reqStr(m, 'categories', 'id')),
-                name: Value(_reqStr(m, 'categories', 'name')),
-                parentId: Value(_optStr(m, 'categories', 'parentId')),
-                icon: Value(_optStr(m, 'categories', 'icon')),
-                createdAt: Value(_reqInt(m, 'categories', 'createdAt')),
-              ),
-            );
-      }
-
-      // Tags carry a UNIQUE(name) constraint in addition to their primary key.
-      // `insertOnConflictUpdate` only upserts on the PK (id), so an incoming tag
-      // whose name collides with an *existing* tag under a different id would
-      // otherwise fall through to SQLite's ABORT and roll the whole import back.
-      // To stay non-destructive we first reconcile by name: if the name already
-      // exists under a different id, we reuse the existing id and remap any
-      // entryTags that referenced the incoming id.
-      final tagIdRemap = <String, String>{};
-      for (final m in tags) {
-        final incomingId = _reqStr(m, 'tags', 'id');
-        final name = _reqStr(m, 'tags', 'name');
-
-        final existingByName = await (_db.select(_db.tags)
-              ..where((t) => t.name.equals(name)))
-            .getSingleOrNull();
-
-        if (existingByName != null && existingByName.id != incomingId) {
-          // A different tag already owns this name; reuse it and remap.
-          tagIdRemap[incomingId] = existingByName.id;
-          continue;
-        }
-
-        await _db.into(_db.tags).insertOnConflictUpdate(
-              TagsCompanion(
-                id: Value(incomingId),
-                name: Value(name),
-                color: Value(_optStr(m, 'tags', 'color')),
-                createdAt: Value(_reqInt(m, 'tags', 'createdAt')),
-              ),
-            );
-        tagsWritten++;
-      }
-
-      for (final m in entries) {
-        await _db.into(_db.entries).insertOnConflictUpdate(
-              EntriesCompanion(
-                id: Value(_reqStr(m, 'entries', 'id')),
-                content: Value(_reqStr(m, 'entries', 'content')),
-                source: Value(_optStr(m, 'entries', 'source')),
-                categoryId: Value(_optStr(m, 'entries', 'categoryId')),
-                createdAt: Value(_reqInt(m, 'entries', 'createdAt')),
-                updatedAt: Value(_reqInt(m, 'entries', 'updatedAt')),
-                lastViewedAt: Value(_optInt(m, 'entries', 'lastViewedAt')),
-                viewCount: Value(_reqInt(m, 'entries', 'viewCount')),
-                isFavorite: Value(_reqBool(m, 'entries', 'isFavorite')),
-              ),
-            );
-      }
-
-      for (final m in entryTags) {
-        final tagId = _reqStr(m, 'entryTags', 'tagId');
-        await _db.into(_db.entryTags).insertOnConflictUpdate(
-              EntryTagsCompanion(
-                entryId: Value(_reqStr(m, 'entryTags', 'entryId')),
-                // Remap to the surviving tag id when the imported tag's name
-                // collided with an existing one (see tag reconciliation above).
-                tagId: Value(tagIdRemap[tagId] ?? tagId),
-              ),
-            );
-      }
-    });
-
-    final summary = ImportSummary(
-      categories: categories.length,
-      // Reconciled tags (name already owned by a different id) are skipped, so
-      // report the number of tag rows actually written, not the payload length.
-      tags: tagsWritten,
-      entries: entries.length,
-      entryTags: entryTags.length,
+    return BackupData(
+      schemaVersion:
+          schemaVersion is int ? schemaVersion : _repo.schemaVersion,
+      categories: [
+        for (final m in categories)
+          BackupCategory(
+            id: _reqStr(m, 'categories', 'id'),
+            name: _reqStr(m, 'categories', 'name'),
+            parentId: _optStr(m, 'categories', 'parentId'),
+            icon: _optStr(m, 'categories', 'icon'),
+            createdAt: _reqInt(m, 'categories', 'createdAt'),
+          ),
+      ],
+      tags: [
+        for (final m in tags)
+          BackupTag(
+            id: _reqStr(m, 'tags', 'id'),
+            name: _reqStr(m, 'tags', 'name'),
+            color: _optStr(m, 'tags', 'color'),
+            createdAt: _reqInt(m, 'tags', 'createdAt'),
+          ),
+      ],
+      entries: [
+        for (final m in entries)
+          BackupEntry(
+            id: _reqStr(m, 'entries', 'id'),
+            content: _reqStr(m, 'entries', 'content'),
+            source: _optStr(m, 'entries', 'source'),
+            categoryId: _optStr(m, 'entries', 'categoryId'),
+            createdAt: _reqInt(m, 'entries', 'createdAt'),
+            updatedAt: _reqInt(m, 'entries', 'updatedAt'),
+            lastViewedAt: _optInt(m, 'entries', 'lastViewedAt'),
+            viewCount: _reqInt(m, 'entries', 'viewCount'),
+            isFavorite: _reqBool(m, 'entries', 'isFavorite'),
+          ),
+      ],
+      entryTags: [
+        for (final m in entryTags)
+          BackupEntryTag(
+            entryId: _reqStr(m, 'entryTags', 'entryId'),
+            tagId: _reqStr(m, 'entryTags', 'tagId'),
+          ),
+      ],
     );
+  }
 
-    AppLogger.info('Imported $summary', tag: _logTag);
+  /// Cross-checks the optional `counts` block against the actual array lengths
+  /// so a truncated/corrupt backup is rejected instead of silently importing.
+  void _checkCounts(
+    Object? counts,
+    List<Map<String, Object?>> categories,
+    List<Map<String, Object?>> tags,
+    List<Map<String, Object?>> entries,
+    List<Map<String, Object?>> entryTags,
+  ) {
+    if (counts == null) {
+      return;
+    }
+    if (counts is! Map<String, Object?>) {
+      throw const FormatException('Invalid backup: "counts" must be an object.');
+    }
+    void check(String key, int actual) {
+      final declared = counts[key];
+      if (declared is int && declared != actual) {
+        throw FormatException(
+          'Invalid backup: counts.$key says $declared but the file contains '
+          '$actual (the backup looks truncated or corrupt).',
+        );
+      }
+    }
 
-    return summary;
+    check('categories', categories.length);
+    check('tags', tags.length);
+    check('entries', entries.length);
+    check('entryTags', entryTags.length);
   }
 
   /// Coerces a JSON array of objects into a typed list of maps, treating a
