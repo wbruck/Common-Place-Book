@@ -9,6 +9,7 @@ import '../../../data_transfer/data/json_file_picker.dart';
 import '../../../entries/presentation/bloc/entries_list_cubit.dart';
 import '../../../tags/presentation/bloc/tags_cubit.dart';
 import '../bloc/theme_cubit.dart';
+import '../widgets/about_dialog.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -45,7 +46,7 @@ class SettingsScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.book_outlined),
             title: const Text('About Common Place Book'),
-            onTap: () => _showAboutDialog(context),
+            onTap: () => showAboutCommonPlaceBookDialog(context),
           ),
 
           const Divider(),
@@ -234,56 +235,6 @@ class SettingsScreen extends StatelessWidget {
             option(Icons.dark_mode, ThemeMode.dark),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showAboutDialog(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(
-              Icons.auto_stories,
-              color: Theme.of(context).colorScheme.secondary,
-            ),
-            const SizedBox(width: 12),
-            const Text('Common Place Book'),
-          ],
-        ),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'A digital commonplace book for storing and rediscovering golden nuggets of wisdom, quotes, and ideas.',
-            ),
-            SizedBox(height: 16),
-            Text(
-              'A commonplace book is a traditional method of compiling knowledge - a personal repository where one stores quotes, ideas, and observations organized by themes for later reflection and retrieval.',
-              style: TextStyle(fontSize: 13),
-            ),
-            SizedBox(height: 16),
-            Text(
-              '"A commonplace book is what a provident poet cannot subsist without, for this proverbial reason, that great wits have short memories."',
-              style: TextStyle(
-                fontStyle: FontStyle.italic,
-                fontSize: 13,
-              ),
-            ),
-            Text(
-              '— Jonathan Swift',
-              style: TextStyle(fontSize: 12),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
       ),
     );
   }
