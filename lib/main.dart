@@ -44,11 +44,16 @@ void main() async {
   final settingsRepository = LocalSettingsRepository(database);
   final initialThemeMode = await settingsRepository.loadThemeMode();
 
+  // Resolve first-visit state up front so the welcome dialog decision is made
+  // before the first frame, alongside the theme.
+  final hasSeenIntro = await settingsRepository.hasSeenIntro();
+
   runApp(
     CommonPlaceBookApp(
       appInfo: AppInfo(version: packageInfo.version),
       settingsRepository: settingsRepository,
       initialThemeMode: initialThemeMode,
+      showIntroOnLaunch: !hasSeenIntro,
     ),
   );
 }

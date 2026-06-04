@@ -17,6 +17,9 @@ class LocalSettingsRepository implements SettingsRepository {
   /// Stable key under which the theme mode is stored.
   static const String _themeModeKey = 'theme_mode';
 
+  /// Stable key under which the "welcome shown" flag is stored.
+  static const String _hasSeenIntroKey = 'has_seen_intro';
+
   @override
   Future<ThemeMode> loadThemeMode() async {
     final value = await _getValue(_themeModeKey);
@@ -26,6 +29,16 @@ class LocalSettingsRepository implements SettingsRepository {
   @override
   Future<void> saveThemeMode(ThemeMode mode) async {
     await _setValue(_themeModeKey, _themeModeToString(mode));
+  }
+
+  @override
+  Future<bool> hasSeenIntro() async {
+    return await _getValue(_hasSeenIntroKey) == 'true';
+  }
+
+  @override
+  Future<void> markIntroSeen() async {
+    await _setValue(_hasSeenIntroKey, 'true');
   }
 
   Future<String?> _getValue(String key) async {
