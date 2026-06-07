@@ -10,6 +10,7 @@ import '../../../../shared/widgets/error_display.dart';
 import '../../../../shared/widgets/loading_indicator.dart';
 import '../../../../shared/widgets/tag_chip.dart';
 import '../../data/repositories/entry_repository.dart';
+import '../../domain/entities/entry_entity.dart';
 import '../bloc/entries_list_cubit.dart';
 import '../bloc/entry_detail_cubit.dart';
 
@@ -195,6 +196,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
               icon: Icons.calendar_today_outlined,
               label: 'Added',
               value: dateFormat.format(entry.createdAt),
+              onTap: () => _openDiscoverForEntry(context, entry),
             ),
             const SizedBox(height: 8),
             _buildMetadataRow(
@@ -247,10 +249,11 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     required IconData icon,
     required String label,
     required String value,
+    VoidCallback? onTap,
   }) {
     final theme = Theme.of(context);
 
-    return Row(
+    final row = Row(
       children: [
         Icon(
           icon,
@@ -272,6 +275,32 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
         ),
       ],
     );
+
+    if (onTap == null) {
+      return row;
+    }
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: row,
+      ),
+    );
+  }
+
+  void _openDiscoverForEntry(BuildContext context, EntryEntity entry) {
+    final created = entry.createdAt;
+    final tagIds = entry.tags.map((t) => t.id).toList();
+    final uri = Uri(
+      path: '/discover',
+      queryParameters: {
+        'date': created.millisecondsSinceEpoch.toString(),
+        if (tagIds.isNotEmpty) 'tags': tagIds.join(','),
+      },
+    );
+    context.push(uri.toString());
   }
 
   void _handleMenuAction(BuildContext context, String action) {

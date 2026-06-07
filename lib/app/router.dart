@@ -47,7 +47,21 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/discover',
       name: 'discover',
-      builder: (context, state) => const DiscoveryScreen(),
+      builder: (context, state) {
+        final dateParam = state.uri.queryParameters['date'];
+        final tagsParam = state.uri.queryParameters['tags'];
+        final dateMillis = dateParam != null ? int.tryParse(dateParam) : null;
+        final centerDate = dateMillis != null
+            ? DateTime.fromMillisecondsSinceEpoch(dateMillis)
+            : null;
+        final initialTagIds = (tagsParam == null || tagsParam.isEmpty)
+            ? <String>{}
+            : tagsParam.split(',').toSet();
+        return DiscoveryScreen(
+          initialTagIds: initialTagIds,
+          centerDate: centerDate,
+        );
+      },
     ),
     GoRoute(
       path: '/tags',
