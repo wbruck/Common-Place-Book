@@ -208,6 +208,24 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
     return query.map((row) => row.readTable(entries)).get();
   }
 
+  /// Returns entries that have a live link to ANY tag id in [tagIds] (OR
+  /// filter), sorted by [Entries.createdAt] descending. Soft-deleted links and
+  /// soft-deleted entries are excluded. Grouping de-duplicates entries that
+  /// match more than one of the selected tags.
+  Future<List<Entry>> getEntriesByAnyTags(List<String> tagIds) {
+    final query = select(entries).join([
+      innerJoin(
+        entryTags,
+        entryTags.entryId.equalsExp(entries.id) & entryTags.deletedAt.isNull(),
+      ),
+    ])
+      ..where(entryTags.tagId.isIn(tagIds) & entries.deletedAt.isNull())
+      ..groupBy([entries.id])
+      ..orderBy([OrderingTerm.desc(entries.createdAt)]);
+
+    return query.map((row) => row.readTable(entries)).get();
+  }
+
   Future<List<Entry>> searchEntries(String searchTerm, {int? limit}) {
     final query = select(entries)
       ..where(

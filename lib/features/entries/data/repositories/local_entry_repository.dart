@@ -112,6 +112,18 @@ class LocalEntryRepository implements EntryRepository {
   }
 
   @override
+  Future<List<EntryEntity>> getEntriesByAnyTags(List<String> tagIds) async {
+    final entries = await _entriesDao.getEntriesByAnyTags(tagIds);
+
+    return Future.wait(
+      entries.map((entry) async {
+        final tags = await _entriesDao.getTagsForEntry(entry.id);
+        return EntryMapper.fromDatabase(entry, tags: tags);
+      }),
+    );
+  }
+
+  @override
   Future<List<EntryEntity>> searchEntries(String query, {int? limit}) async {
     final entries = await _entriesDao.searchEntries(query, limit: limit);
 

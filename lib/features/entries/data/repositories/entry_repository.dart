@@ -36,6 +36,8 @@ abstract class EntryRepository {
     int? offset,
   });
 
+  Future<List<EntryEntity>> getEntriesByAnyTags(List<String> tagIds);
+
   Future<List<EntryEntity>> searchEntries(String query, {int? limit});
 
   Future<EntryEntity?> getRandomEntry();
