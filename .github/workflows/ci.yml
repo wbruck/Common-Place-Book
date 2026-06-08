@@ -106,6 +106,14 @@ jobs:
           message: |
             **Cloudflare Pages preview deployed**
 
-            URL: ${{ steps.deploy.outputs.deployment-url }}
+            🔗 Preview (always the latest build for this branch):
+            ${{ steps.deploy.outputs.pages-deployment-alias-url }}
 
-            Built from `${{ github.head_ref }}` @ `${{ github.sha }}`
+            📌 This exact build (immutable per-deploy URL):
+            ${{ steps.deploy.outputs.deployment-url }}
+
+            Built from `${{ github.head_ref }}` @ `${{ github.event.pull_request.head.sha }}`
+
+            > ⚠️ Seeing stale behavior? The installed PWA / service worker
+            > caches the previous build. Fully close & reopen the PWA (or
+            > reinstall, or hard-reload in a tab) to load the new code.
