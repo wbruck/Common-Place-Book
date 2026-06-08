@@ -15,6 +15,11 @@ import '../features/tags/presentation/screens/tags_screen.dart';
 /// `showDialog` cannot find a Navigator.
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
+/// Matches a URL sitting at the end of the shared text (optionally followed by
+/// trailing whitespace). Chrome's "share selected text" appends the page URL
+/// after the selection, so we lift it out of the quote and into the source.
+final _trailingUrlPattern = RegExp(r'(https?://\S+)\s*$');
+
 /// Computes the router's start location from an Android PWA "share target"
 /// launch. The installed web app is registered as a share target in
 /// web/manifest.json (method GET), so shared text arrives as query
@@ -22,19 +27,34 @@ final rootNavigatorKey = GlobalKey<NavigatorState>();
 /// params sit on the base URL (before the fragment), not in GoRouter's
 /// location — so we read them here and deep-link into the new-entry form.
 /// Returns '/' on non-web or when no shareable text was provided.
-String _shareInitialLocation() {
-  if (!kIsWeb) return '/';
-  final params = Uri.base.queryParameters;
-  final text = params['text']?.trim() ?? '';
+String _shareInitialLocation() =>
+    kIsWeb ? (shareTargetLocation(Uri.base.queryParameters) ?? '/') : '/';
+
+/// Builds the new-entry deep-link for a share-target launch from the raw query
+/// [params] (`text`, `title`, `url`), or null when nothing shareable was sent.
+///
+/// Chrome appends the page URL to the end of the shared selection, so a
+/// trailing URL is stripped out of the quote and used as the entry's source
+/// (the "Author / source" field) instead of cluttering the content.
+@visibleForTesting
+String? shareTargetLocation(Map<String, String> params) {
+  var text = params['text']?.trim() ?? '';
   final title = params['title']?.trim() ?? '';
-  final url = params['url']?.trim() ?? '';
+  var url = params['url']?.trim() ?? '';
+
+  // Lift a trailing URL out of the selected text into the source field.
+  final trailingMatch = _trailingUrlPattern.firstMatch(text);
+  if (trailingMatch != null) {
+    if (url.isEmpty) url = trailingMatch.group(1)!;
+    text = text.substring(0, trailingMatch.start).trimRight();
+  }
+
   // The selected/shared text is the quote; fall back to title, then url.
-  final content = text.isNotEmpty
-      ? text
-      : (title.isNotEmpty ? title : url);
-  if (content.isEmpty) return '/';
-  // A shared page URL is a sensible "source", unless it's all we had and
-  // already became the content.
+  final content = text.isNotEmpty ? text : (title.isNotEmpty ? title : url);
+  if (content.isEmpty) return null;
+
+  // A shared page URL is a sensible source, unless it's all we had and already
+  // became the content.
   final source = (url.isNotEmpty && url != content) ? url : '';
   return Uri(
     path: '/entry/new',
