@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
@@ -14,9 +15,39 @@ import '../features/tags/presentation/screens/tags_screen.dart';
 /// `showDialog` cannot find a Navigator.
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
+/// Computes the router's start location from an Android PWA "share target"
+/// launch. The installed web app is registered as a share target in
+/// web/manifest.json (method GET), so shared text arrives as query
+/// parameters on [Uri.base]. With Flutter's default hash URL strategy these
+/// params sit on the base URL (before the fragment), not in GoRouter's
+/// location — so we read them here and deep-link into the new-entry form.
+/// Returns '/' on non-web or when no shareable text was provided.
+String _shareInitialLocation() {
+  if (!kIsWeb) return '/';
+  final params = Uri.base.queryParameters;
+  final text = params['text']?.trim() ?? '';
+  final title = params['title']?.trim() ?? '';
+  final url = params['url']?.trim() ?? '';
+  // The selected/shared text is the quote; fall back to title, then url.
+  final content = text.isNotEmpty
+      ? text
+      : (title.isNotEmpty ? title : url);
+  if (content.isEmpty) return '/';
+  // A shared page URL is a sensible "source", unless it's all we had and
+  // already became the content.
+  final source = (url.isNotEmpty && url != content) ? url : '';
+  return Uri(
+    path: '/entry/new',
+    queryParameters: {
+      'content': content,
+      if (source.isNotEmpty) 'source': source,
+    },
+  ).toString();
+}
+
 final appRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
-  initialLocation: '/',
+  initialLocation: _shareInitialLocation(),
   routes: [
     GoRoute(
       path: '/',
@@ -26,7 +57,14 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/entry/new',
       name: 'newEntry',
-      builder: (context, state) => const EntryFormScreen(),
+      builder: (context, state) {
+        final content = state.uri.queryParameters['content'];
+        final source = state.uri.queryParameters['source'];
+        return EntryFormScreen(
+          initialContent: content,
+          initialSource: source,
+        );
+      },
     ),
     GoRoute(
       path: '/entry/:id',

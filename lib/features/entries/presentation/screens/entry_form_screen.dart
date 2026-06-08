@@ -15,8 +15,12 @@ class EntryFormScreen extends StatefulWidget {
   const EntryFormScreen({
     super.key,
     this.entryId,
+    this.initialContent,
+    this.initialSource,
   });
   final String? entryId;
+  final String? initialContent;
+  final String? initialSource;
 
   @override
   State<EntryFormScreen> createState() => _EntryFormScreenState();
@@ -42,7 +46,10 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
     if (isEditing) {
       _formCubit.initEditEntry(widget.entryId!);
     } else {
-      _formCubit.initNewEntry();
+      _formCubit.initNewEntry(
+        initialContent: widget.initialContent ?? '',
+        initialSource: widget.initialSource ?? '',
+      );
     }
   }
 
