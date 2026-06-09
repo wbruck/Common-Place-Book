@@ -87,8 +87,8 @@ class EntryFormCubit extends Cubit<EntryFormState> {
         super(const EntryFormInitial());
   final EntryRepository _entryRepository;
 
-  void initNewEntry() {
-    emit(const EntryFormReady());
+  void initNewEntry({String initialContent = '', String initialSource = ''}) {
+    emit(EntryFormReady(content: initialContent, source: initialSource));
   }
 
   Future<void> initEditEntry(String entryId) async {
