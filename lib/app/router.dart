@@ -6,6 +6,7 @@ import '../features/discovery/presentation/screens/discovery_screen.dart';
 import '../features/entries/presentation/screens/entry_detail_screen.dart';
 import '../features/entries/presentation/screens/entry_form_screen.dart';
 import '../features/entries/presentation/screens/home_screen.dart';
+import '../features/settings/presentation/screens/privacy_screen.dart';
 import '../features/settings/presentation/screens/settings_screen.dart';
 import '../features/tags/presentation/screens/tags_screen.dart';
 
@@ -130,6 +131,11 @@ final appRouter = GoRouter(
       path: '/settings',
       name: 'settings',
       builder: (context, state) => const SettingsScreen(),
+    ),
+    GoRoute(
+      path: '/privacy',
+      name: 'privacy',
+      builder: (context, state) => const PrivacyScreen(),
     ),
   ],
 );

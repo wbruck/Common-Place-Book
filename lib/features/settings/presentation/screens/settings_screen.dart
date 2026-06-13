@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/app_info.dart';
 import '../../../../core/utils/app_logger.dart';
@@ -45,8 +46,15 @@ class SettingsScreen extends StatelessWidget {
           ),
           ListTile(
             leading: const Icon(Icons.book_outlined),
-            title: const Text('About Common Place Book'),
+            title: const Text('What is a Common Place Book'),
             onTap: () => showAboutCommonPlaceBookDialog(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.shield_outlined),
+            title: const Text('Your data & privacy'),
+            subtitle: const Text('You own it, export it, we never see it'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.pushNamed('privacy'),
           ),
 
           const Divider(),
