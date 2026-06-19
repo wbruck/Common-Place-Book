@@ -21,6 +21,21 @@ final rootNavigatorKey = GlobalKey<NavigatorState>();
 /// after the selection, so we lift it out of the quote and into the source.
 final _trailingUrlPattern = RegExp(r'(https?://\S+)\s*$');
 
+/// Strips a text-fragment directive (`:~:text=…`, the scroll-to-text anchor)
+/// from a shared URL. Chrome's "share highlighted text" appends one to the page
+/// URL, embedding the selected quote in the link itself — so without this the
+/// quote ends up duplicated onto the end of the source field. Per the URL
+/// fragment-directive spec, `:~:` always delimits the directive, so everything
+/// from it onward is dropped; a now-empty `#` fragment is trimmed too.
+String _stripFragmentDirective(String url) {
+  final marker = url.indexOf(':~:');
+  if (marker < 0) return url;
+  final stripped = url.substring(0, marker);
+  return stripped.endsWith('#')
+      ? stripped.substring(0, stripped.length - 1)
+      : stripped;
+}
+
 /// Computes the router's start location from an Android PWA "share target"
 /// launch. The installed web app is registered as a share target in
 /// web/manifest.json (method GET), so shared text arrives as query
@@ -41,12 +56,12 @@ String _shareInitialLocation() =>
 String? shareTargetLocation(Map<String, String> params) {
   var text = params['text']?.trim() ?? '';
   final title = params['title']?.trim() ?? '';
-  var url = params['url']?.trim() ?? '';
+  var url = _stripFragmentDirective(params['url']?.trim() ?? '');
 
   // Lift a trailing URL out of the selected text into the source field.
   final trailingMatch = _trailingUrlPattern.firstMatch(text);
   if (trailingMatch != null) {
-    if (url.isEmpty) url = trailingMatch.group(1)!;
+    if (url.isEmpty) url = _stripFragmentDirective(trailingMatch.group(1)!);
     text = text.substring(0, trailingMatch.start).trimRight();
   }
 
