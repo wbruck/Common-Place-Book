@@ -48,6 +48,37 @@ void main() {
       expect(uri.queryParameters.containsKey('source'), isFalse);
     });
 
+    test('strips a text-fragment directive from the shared page URL', () {
+      // Chrome's "share highlighted text" appends a scroll-to-text directive
+      // (:~:text=…) to the page URL, embedding the quote in the link itself.
+      final uri = locationFor({
+        'text': 'A wise quote.',
+        'title': 'Some Article',
+        'url': 'https://example.com/page#:~:text=A%20wise%20quote.',
+      })!;
+
+      expect(uri.queryParameters['content'], 'A wise quote.');
+      expect(uri.queryParameters['source'], 'https://example.com/page');
+    });
+
+    test('strips a directive that follows an existing URL fragment', () {
+      final uri = locationFor({
+        'text': 'A wise quote.',
+        'url': 'https://example.com/page#section:~:text=A%20wise%20quote.',
+      })!;
+
+      expect(uri.queryParameters['source'], 'https://example.com/page#section');
+    });
+
+    test('strips a text-fragment directive off a URL trailing the text', () {
+      final uri = locationFor({
+        'text': 'A wise quote.\n\nhttps://example.com/page#:~:text=A%20wise',
+      })!;
+
+      expect(uri.queryParameters['content'], 'A wise quote.');
+      expect(uri.queryParameters['source'], 'https://example.com/page');
+    });
+
     test('falls back to title when there is no text', () {
       final uri = locationFor({
         'title': 'Page Title',
