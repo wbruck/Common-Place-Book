@@ -74,6 +74,15 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.more_vert),
             onSelected: (value) {
               switch (value) {
+                case 'timeline':
+                  // The Timeline is the Discover feed centered on today.
+                  final uri = Uri(
+                    path: '/discover',
+                    queryParameters: {
+                      'date': DateTime.now().millisecondsSinceEpoch.toString(),
+                    },
+                  );
+                  context.push(uri.toString());
                 case 'tags':
                   context.push('/tags');
                 case 'settings':
@@ -81,6 +90,14 @@ class _HomeScreenState extends State<HomeScreen> {
               }
             },
             itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'timeline',
+                child: ListTile(
+                  leading: Icon(Icons.timeline_outlined),
+                  title: Text('Timeline'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
               const PopupMenuItem(
                 value: 'tags',
                 child: ListTile(
