@@ -16,6 +16,12 @@ import '../features/tags/presentation/screens/tags_screen.dart';
 /// `showDialog` cannot find a Navigator.
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
+/// Set by `main()` (before `runApp`, so before [appRouter] — a lazy top-level
+/// final — is first touched) when the app was launched by tapping the daily
+/// reminder notification; consumed once as the router's start location.
+/// Mobile-only, so it never competes with the web-only share-target location.
+String? notificationLaunchLocation;
+
 /// Matches a URL sitting at the end of the shared text (optionally followed by
 /// trailing whitespace). Chrome's "share selected text" appends the page URL
 /// after the selection, so we lift it out of the quote and into the source.
@@ -83,7 +89,7 @@ String? shareTargetLocation(Map<String, String> params) {
 
 final appRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
-  initialLocation: _shareInitialLocation(),
+  initialLocation: notificationLaunchLocation ?? _shareInitialLocation(),
   routes: [
     GoRoute(
       path: '/',

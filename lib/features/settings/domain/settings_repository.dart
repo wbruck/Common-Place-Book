@@ -18,4 +18,18 @@ abstract class SettingsRepository {
 
   /// Marks the welcome/intro as shown so it does not appear on later launches.
   Future<void> markIntroSeen();
+
+  /// Whether the daily reminder notification is enabled. Defaults to `false`
+  /// when nothing is persisted.
+  Future<bool> loadReminderEnabled();
+
+  /// Persists whether the daily reminder notification is enabled.
+  Future<void> saveReminderEnabled({required bool enabled});
+
+  /// The daily reminder time as minutes since midnight, mapping a missing or
+  /// unparseable value to 540 (9:00 AM).
+  Future<int> loadReminderTimeMinutes();
+
+  /// Persists the daily reminder time as minutes since midnight.
+  Future<void> saveReminderTimeMinutes(int minutes);
 }

@@ -13,10 +13,13 @@ import 'package:common_place_book/app/app.dart';
 import 'package:common_place_book/core/app_info.dart';
 import 'package:common_place_book/core/database/database.dart';
 import 'package:common_place_book/core/database/database_provider.dart';
+import 'package:common_place_book/features/entries/data/repositories/local_entry_repository.dart';
 import 'package:common_place_book/features/settings/data/local_settings_repository.dart';
 import 'package:common_place_book/features/settings/domain/settings_repository.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../helpers/fake_notification_service.dart';
 
 void main() {
   late AppDatabase db;
@@ -59,6 +62,8 @@ void main() {
         CommonPlaceBookApp(
           appInfo: const AppInfo(version: 'test'),
           settingsRepository: repository,
+          entryRepository: LocalEntryRepository(database: db),
+          notificationService: FakeNotificationService(supported: false),
           showIntroOnLaunch: true,
         ),
       );
@@ -79,6 +84,8 @@ void main() {
         CommonPlaceBookApp(
           appInfo: const AppInfo(version: 'test'),
           settingsRepository: repository,
+          entryRepository: LocalEntryRepository(database: db),
+          notificationService: FakeNotificationService(supported: false),
           // showIntroOnLaunch defaults to false (returning visitor).
         ),
       );

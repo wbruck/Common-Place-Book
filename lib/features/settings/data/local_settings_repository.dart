@@ -20,6 +20,16 @@ class LocalSettingsRepository implements SettingsRepository {
   /// Stable key under which the "welcome shown" flag is stored.
   static const String _hasSeenIntroKey = 'has_seen_intro';
 
+  /// Stable key under which the daily-reminder toggle is stored.
+  static const String _reminderEnabledKey = 'reminder_enabled';
+
+  /// Stable key under which the daily-reminder time (minutes since midnight)
+  /// is stored.
+  static const String _reminderTimeKey = 'reminder_time';
+
+  /// 9:00 AM, the fallback when no reminder time is persisted.
+  static const int _defaultReminderTimeMinutes = 9 * 60;
+
   @override
   Future<ThemeMode> loadThemeMode() async {
     final value = await _getValue(_themeModeKey);
@@ -39,6 +49,31 @@ class LocalSettingsRepository implements SettingsRepository {
   @override
   Future<void> markIntroSeen() async {
     await _setValue(_hasSeenIntroKey, 'true');
+  }
+
+  @override
+  Future<bool> loadReminderEnabled() async {
+    return await _getValue(_reminderEnabledKey) == 'true';
+  }
+
+  @override
+  Future<void> saveReminderEnabled({required bool enabled}) async {
+    await _setValue(_reminderEnabledKey, enabled ? 'true' : 'false');
+  }
+
+  @override
+  Future<int> loadReminderTimeMinutes() async {
+    final value = await _getValue(_reminderTimeKey);
+    final minutes = value == null ? null : int.tryParse(value);
+    if (minutes == null || minutes < 0 || minutes >= 24 * 60) {
+      return _defaultReminderTimeMinutes;
+    }
+    return minutes;
+  }
+
+  @override
+  Future<void> saveReminderTimeMinutes(int minutes) async {
+    await _setValue(_reminderTimeKey, minutes.toString());
   }
 
   Future<String?> _getValue(String key) async {
