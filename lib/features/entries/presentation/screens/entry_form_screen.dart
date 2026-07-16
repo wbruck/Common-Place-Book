@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../shared/widgets/loading_indicator.dart';
 import '../../../../shared/widgets/tag_chip.dart';
+import '../../../scanner/data/text_recognition_service_factory.dart';
+import '../../../scanner/domain/scan_result.dart';
 import '../../../tags/presentation/bloc/tags_cubit.dart';
 import '../../data/repositories/entry_repository.dart';
 import '../../domain/entities/entry_entity.dart';
@@ -29,6 +31,10 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
   late final EntryFormCubit _formCubit;
   late final TextEditingController _contentController;
   late final TextEditingController _sourceController;
+
+  /// Scan entry points only exist on platforms where on-device recognition
+  /// can actually run; see [isScanSupported].
+  final bool _scanSupported = isScanSupported;
 
   bool get isEditing => widget.entryId != null;
 
@@ -155,9 +161,18 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
                           minLines: 5,
                           autofocus: !isEditing,
                           textCapitalization: TextCapitalization.sentences,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             hintText: 'What wisdom would you like to capture?',
-                            border: OutlineInputBorder(),
+                            border: const OutlineInputBorder(),
+                            suffixIcon: _scanSupported
+                                ? IconButton(
+                                    icon: const Icon(
+                                      Icons.document_scanner_outlined,
+                                    ),
+                                    tooltip: 'Scan text from a photo',
+                                    onPressed: () => _scanText(context),
+                                  )
+                                : null,
                           ),
                           style: theme.textTheme.bodyLarge,
                         ),
@@ -259,6 +274,23 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
       if (tag != null) {
         _formCubit.addTag(tag.id);
       }
+    }
+  }
+
+  /// Launches the scanner in return mode and merges the result into the
+  /// form. The merge rules (append, never replace typed content; source only
+  /// fills an empty field) live on [ScanTextResult] so they stay unit-tested.
+  Future<void> _scanText(BuildContext context) async {
+    final result = await context.push<ScanTextResult>('/scan?return=true');
+    if (result == null || !mounted) return;
+
+    final content = result.mergeIntoContent(_contentController.text);
+    _contentController.text = content;
+    _formCubit.updateContent(content);
+
+    if (result.shouldFillSource(_sourceController.text)) {
+      _sourceController.text = result.source;
+      _formCubit.updateSource(result.source);
     }
   }
 

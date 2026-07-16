@@ -69,6 +69,16 @@ class PrivacyScreen extends StatelessWidget {
                 'tracking and no profiling of your entries.',
           ),
           const _InfoCard(
+            icon: Icons.document_scanner_outlined,
+            title: 'Scan Text stays on your device',
+            body: 'When you import a quote from a photo, text recognition runs '
+                'entirely on this device using Google ML Kit. A scanned photo '
+                'is used only to read its text: it is deleted as soon as the '
+                'scan finishes and is never kept by the app or uploaded '
+                'anywhere. The recognized text is only saved if you choose to '
+                'save the entry.',
+          ),
+          const _InfoCard(
             icon: Icons.devices_outlined,
             title: 'Sync is coming',
             body: 'Cross-device sync between web and mobile is on the way, so '

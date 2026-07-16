@@ -1,11 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../features/discovery/presentation/screens/discovery_screen.dart';
 import '../features/entries/presentation/screens/entry_detail_screen.dart';
 import '../features/entries/presentation/screens/entry_form_screen.dart';
 import '../features/entries/presentation/screens/home_screen.dart';
+import '../features/scanner/domain/scan_source.dart';
+import '../features/scanner/presentation/screens/scan_screen.dart';
 import '../features/settings/presentation/screens/privacy_screen.dart';
 import '../features/settings/presentation/screens/settings_screen.dart';
 import '../features/tags/presentation/screens/tags_screen.dart';
@@ -99,6 +102,24 @@ final appRouter = GoRouter(
         return EntryFormScreen(
           initialContent: content,
           initialSource: source,
+        );
+      },
+    ),
+    GoRoute(
+      path: '/scan',
+      name: 'scan',
+      builder: (context, state) {
+        final source = state.uri.queryParameters['source'] == 'gallery'
+            ? ScanSource.gallery
+            : ScanSource.camera;
+        final returnResult = state.uri.queryParameters['return'] == 'true';
+        // A photo recovered after Android killed the app mid-capture is
+        // handed through `extra` (see HomeScreen's lost-scan recovery).
+        final extra = state.extra;
+        return ScanScreen(
+          source: source,
+          returnResult: returnResult,
+          recoveredImage: extra is XFile ? extra : null,
         );
       },
     ),
