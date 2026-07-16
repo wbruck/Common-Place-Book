@@ -41,6 +41,10 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>The camera is used to scan text from books and other physical sources so it can be saved as an entry. Photos are processed on this device and are never stored or uploaded.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Photo library access lets you import text from an existing photo of a page. Photos are processed on this device and are never stored or uploaded.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

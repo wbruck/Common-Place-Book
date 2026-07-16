@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +9,8 @@ import '../../../../shared/widgets/entry_card.dart';
 import '../../../../shared/widgets/error_display.dart';
 import '../../../../shared/widgets/loading_indicator.dart';
 import '../../../discovery/presentation/bloc/discovery_cubit.dart';
+import '../../../scanner/data/scan_image_picker.dart';
+import '../../../scanner/data/text_recognition_service_factory.dart';
 import '../../../tags/presentation/bloc/tags_cubit.dart';
 import '../../data/repositories/entry_repository.dart';
 import '../../domain/entities/entry_entity.dart';
@@ -23,12 +27,28 @@ class _HomeScreenState extends State<HomeScreen> {
   late final DiscoveryCubit _discoveryCubit;
   bool _initialized = false;
 
+  /// Scan entry points only exist on platforms where on-device recognition
+  /// can actually run; see [isScanSupported].
+  final bool _scanSupported = isScanSupported;
+
   @override
   void initState() {
     super.initState();
     _discoveryCubit = DiscoveryCubit(
       entryRepository: context.read<EntryRepository>(),
     );
+    _resumeLostScan();
+  }
+
+  /// Resumes a scan whose photo Android recovered after the OS killed the
+  /// app while the camera was open (image_picker's lost-data contract): the
+  /// app cold-starts here at home, so this is where the captured photo must
+  /// be picked back up instead of silently discarded. No-op everywhere else.
+  Future<void> _resumeLostScan() async {
+    if (!_scanSupported) return;
+    final image = await retrieveLostScanImage();
+    if (image == null || !mounted) return;
+    unawaited(context.push('/scan', extra: image));
   }
 
   @override
@@ -83,6 +103,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   );
                   context.push(uri.toString());
+                case 'import_photo':
+                  context.push('/scan?source=gallery');
                 case 'tags':
                   context.push('/tags');
                 case 'settings':
@@ -90,6 +112,15 @@ class _HomeScreenState extends State<HomeScreen> {
               }
             },
             itemBuilder: (context) => [
+              if (_scanSupported)
+                const PopupMenuItem(
+                  value: 'import_photo',
+                  child: ListTile(
+                    leading: Icon(Icons.image_search_outlined),
+                    title: Text('Import from Photo'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
               const PopupMenuItem(
                 value: 'timeline',
                 child: ListTile(
@@ -147,10 +178,26 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/entry/new'),
-        icon: const Icon(Icons.add),
-        label: const Text('New Entry'),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (_scanSupported) ...[
+            FloatingActionButton.small(
+              heroTag: 'scan-text',
+              tooltip: 'Scan text with the camera',
+              onPressed: () => context.push('/scan'),
+              child: const Icon(Icons.document_scanner_outlined),
+            ),
+            const SizedBox(height: 12),
+          ],
+          FloatingActionButton.extended(
+            heroTag: 'new-entry',
+            onPressed: () => context.push('/entry/new'),
+            icon: const Icon(Icons.add),
+            label: const Text('New Entry'),
+          ),
+        ],
       ),
     );
   }
