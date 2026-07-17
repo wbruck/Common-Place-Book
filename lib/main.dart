@@ -4,11 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'app/app.dart';
+import 'app/router.dart';
 import 'core/app_info.dart';
 import 'core/database/database.dart';
 import 'core/database/database_provider.dart';
 import 'core/database/tombstone_purge_service.dart';
+import 'core/notifications/notification_service.dart';
 import 'core/utils/app_logger.dart';
+import 'features/entries/data/repositories/local_entry_repository.dart';
+import 'features/reminders/domain/daily_reminder_scheduler.dart';
+import 'features/reminders/domain/reminder_settings.dart';
 import 'features/settings/data/local_settings_repository.dart';
 
 void main() async {
@@ -48,11 +53,67 @@ void main() async {
   // before the first frame, alongside the theme.
   final hasSeenIntro = await settingsRepository.hasSeenIntro();
 
+  final entryRepository = LocalEntryRepository(database: database);
+
+  // Daily reminder notifications (Android/iOS only; a no-op elsewhere).
+  final notificationService = LocalNotificationService();
+  var reminderSettings = const ReminderSettings(
+    enabled: false,
+    time: ReminderSettings.defaultTime,
+  );
+  if (notificationService.isSupported) {
+    await notificationService.init(
+      onNotificationTap: (payload) => appRouter.push('/entry/$payload'),
+    );
+
+    // When the app was cold-started by tapping the reminder, open that entry.
+    final launchPayload = await notificationService.getLaunchPayload();
+    if (launchPayload != null) {
+      notificationLaunchLocation = '/entry/$launchPayload';
+    }
+
+    final reminderEnabled = await settingsRepository.loadReminderEnabled();
+    final reminderMinutes =
+        await settingsRepository.loadReminderTimeMinutes();
+    reminderSettings = ReminderSettings(
+      enabled: reminderEnabled,
+      time: TimeOfDay(
+        hour: reminderMinutes ~/ 60,
+        minute: reminderMinutes % 60,
+      ),
+    );
+
+    // Re-pick the reminder's quote on every launch (and cancel it when the
+    // book is empty or the reminder is off). Fire-and-forget, like the
+    // tombstone purge: it must never block first paint.
+    unawaited(
+      DailyReminderScheduler(
+        entryRepository: entryRepository,
+        notificationService: notificationService,
+      )
+          .reschedule(
+        enabled: reminderSettings.enabled,
+        time: reminderSettings.time,
+      )
+          .catchError((Object error, StackTrace stackTrace) {
+        AppLogger.error(
+          'Daily reminder reschedule failed on startup',
+          tag: 'Startup',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }),
+    );
+  }
+
   runApp(
     CommonPlaceBookApp(
       appInfo: AppInfo(version: packageInfo.version),
       settingsRepository: settingsRepository,
+      entryRepository: entryRepository,
+      notificationService: notificationService,
       initialThemeMode: initialThemeMode,
+      initialReminderSettings: reminderSettings,
       showIntroOnLaunch: !hasSeenIntro,
     ),
   );

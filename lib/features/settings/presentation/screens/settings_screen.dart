@@ -3,11 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/app_info.dart';
+import '../../../../core/notifications/notification_service.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../data_transfer/data/data_transfer_service.dart';
 import '../../../data_transfer/data/file_save/file_save.dart';
 import '../../../data_transfer/data/json_file_picker.dart';
 import '../../../entries/presentation/bloc/entries_list_cubit.dart';
+import '../../../reminders/domain/reminder_settings.dart';
+import '../../../reminders/presentation/bloc/reminder_cubit.dart';
 import '../../../tags/presentation/bloc/tags_cubit.dart';
 import '../bloc/theme_cubit.dart';
 import '../widgets/about_dialog.dart';
@@ -36,6 +39,40 @@ class SettingsScreen extends StatelessWidget {
           ),
 
           const Divider(),
+
+          // Daily reminder section (scheduled local notifications exist only
+          // on Android/iOS, so the section is hidden elsewhere).
+          if (context.read<NotificationService>().isSupported) ...[
+            _buildSectionHeader(context, 'Daily reminder'),
+            BlocBuilder<ReminderCubit, ReminderSettings>(
+              builder: (context, settings) => Column(
+                children: [
+                  SwitchListTile(
+                    secondary: const Icon(Icons.notifications_outlined),
+                    title: const Text('Daily reminder'),
+                    subtitle: const Text(
+                      'A quote from your book, once a day',
+                    ),
+                    value: settings.enabled,
+                    onChanged: (value) =>
+                        _handleReminderToggle(context, value),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.schedule_outlined),
+                    title: const Text('Reminder time'),
+                    subtitle: Text(settings.time.format(context)),
+                    trailing: const Icon(Icons.chevron_right),
+                    enabled: settings.enabled,
+                    onTap: () => _handlePickReminderTime(
+                      context,
+                      settings.time,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(),
+          ],
 
           // About section
           _buildSectionHeader(context, 'About'),
@@ -94,6 +131,39 @@ class SettingsScreen extends StatelessWidget {
             ),
       ),
     );
+  }
+
+  Future<void> _handleReminderToggle(BuildContext context, bool value) async {
+    // Captured before the await, matching _handleExport's pattern.
+    final messenger = ScaffoldMessenger.of(context);
+    final granted =
+        await context.read<ReminderCubit>().setEnabled(enabled: value);
+    if (value && !granted) {
+      // The switch renders from cubit state, so it stays off automatically.
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Notifications are disabled for this app. '
+            'Enable them in system settings.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _handlePickReminderTime(
+    BuildContext context,
+    TimeOfDay current,
+  ) async {
+    final reminderCubit = context.read<ReminderCubit>();
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: current,
+      helpText: 'Daily reminder time',
+    );
+    if (picked != null) {
+      await reminderCubit.setTime(picked);
+    }
   }
 
   Future<void> _handleExport(BuildContext context) async {

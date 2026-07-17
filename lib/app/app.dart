@@ -5,13 +5,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../core/app_info.dart';
 import '../core/database/database_provider.dart';
+import '../core/notifications/notification_service.dart';
 import '../core/utils/app_logger.dart';
 import '../features/data_transfer/data/data_transfer_service.dart';
 import '../features/data_transfer/data/local_backup_repository.dart';
 import '../features/data_transfer/domain/backup_repository.dart';
 import '../features/entries/data/repositories/entry_repository.dart';
-import '../features/entries/data/repositories/local_entry_repository.dart';
 import '../features/entries/presentation/bloc/entries_list_cubit.dart';
+import '../features/reminders/domain/daily_reminder_scheduler.dart';
+import '../features/reminders/domain/reminder_settings.dart';
+import '../features/reminders/presentation/bloc/reminder_cubit.dart';
 import '../features/settings/domain/settings_repository.dart';
 import '../features/settings/presentation/bloc/theme_cubit.dart';
 import '../features/settings/presentation/widgets/about_dialog.dart';
@@ -25,14 +28,26 @@ class CommonPlaceBookApp extends StatelessWidget {
   const CommonPlaceBookApp({
     required this.appInfo,
     required this.settingsRepository,
+    required this.entryRepository,
+    required this.notificationService,
     this.initialThemeMode = ThemeMode.system,
+    this.initialReminderSettings = const ReminderSettings(
+      enabled: false,
+      time: ReminderSettings.defaultTime,
+    ),
     this.showIntroOnLaunch = false,
     super.key,
   });
 
   final AppInfo appInfo;
   final SettingsRepository settingsRepository;
+  final EntryRepository entryRepository;
+  final NotificationService notificationService;
   final ThemeMode initialThemeMode;
+
+  /// Persisted daily-reminder configuration, resolved in `main` alongside the
+  /// theme so the Settings screen renders the right state immediately.
+  final ReminderSettings initialReminderSettings;
 
   /// When true, the one-time welcome dialog is shown after the first frame.
   /// Resolved in `main` from [SettingsRepository.hasSeenIntro] so a returning
@@ -43,8 +58,8 @@ class CommonPlaceBookApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final database = DatabaseProvider.instance;
 
-    // Create concrete implementations
-    final entryRepository = LocalEntryRepository(database: database);
+    // Create concrete implementations (entryRepository arrives from `main`,
+    // which also uses it for the startup reminder reschedule).
     final tagRepository = LocalTagRepository(database: database);
 
     return MultiRepositoryProvider(
@@ -72,6 +87,9 @@ class CommonPlaceBookApp extends StatelessWidget {
         RepositoryProvider<SettingsRepository>(
           create: (_) => settingsRepository,
         ),
+        RepositoryProvider<NotificationService>(
+          create: (_) => notificationService,
+        ),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -89,6 +107,17 @@ class CommonPlaceBookApp extends StatelessWidget {
             create: (context) => ThemeCubit(
               settingsRepository: context.read<SettingsRepository>(),
               initialMode: initialThemeMode,
+            ),
+          ),
+          BlocProvider(
+            create: (context) => ReminderCubit(
+              settingsRepository: context.read<SettingsRepository>(),
+              notificationService: context.read<NotificationService>(),
+              scheduler: DailyReminderScheduler(
+                entryRepository: context.read<EntryRepository>(),
+                notificationService: context.read<NotificationService>(),
+              ),
+              initialSettings: initialReminderSettings,
             ),
           ),
         ],
