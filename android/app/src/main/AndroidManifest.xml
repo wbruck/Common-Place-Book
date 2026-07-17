@@ -4,7 +4,7 @@
     <!-- Restore the scheduled reminder after device reboot. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <application
-        android:label="common_place_book"
+        android:label="Commonplace"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
