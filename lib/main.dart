@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'app/app.dart';
 import 'app/router.dart';
+import 'app/theme/app_theme.dart';
 import 'core/app_info.dart';
 import 'core/database/database.dart';
 import 'core/database/database_provider.dart';
@@ -18,6 +20,10 @@ import 'features/settings/data/local_settings_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Apply the brand status bar style before the first frame so screens
+  // without an AppBar (which would re-apply it via the theme) still get it.
+  SystemChrome.setSystemUIOverlayStyle(AppTheme.systemOverlayStyle);
 
   // Initialize the database
   final database = AppDatabase();

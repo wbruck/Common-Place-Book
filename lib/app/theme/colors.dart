@@ -5,6 +5,11 @@ class AppColors {
 
   // ============ Light Theme Colors ============
 
+  // Brand
+  /// Launcher-icon background orange; must stay in sync with the PWA
+  /// `theme_color` in web/manifest.json.
+  static const Color brandOrange = Color(0xFFD98324);
+
   // Primary palette
   static const Color primary = Color(0xFF5D5348);
   static const Color primaryLight = Color(0xFF7D7368);

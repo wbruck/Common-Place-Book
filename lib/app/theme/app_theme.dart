@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'colors.dart';
 
 class AppTheme {
   AppTheme._();
+
+  /// Paints the Android status bar in the brand orange so the installed app
+  /// matches the PWA, whose `theme_color` tints the same area. Only the
+  /// Android-specific fields are set so iOS keeps its defaults.
+  static const SystemUiOverlayStyle systemOverlayStyle = SystemUiOverlayStyle(
+    statusBarColor: AppColors.brandOrange,
+    statusBarIconBrightness: Brightness.light,
+  );
 
   static ThemeData get light {
     return ThemeData(
@@ -24,6 +33,7 @@ class AppTheme {
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
         centerTitle: false,
+        systemOverlayStyle: AppTheme.systemOverlayStyle,
         titleTextStyle: GoogleFonts.lora(
           fontSize: 20,
           fontWeight: FontWeight.w600,
@@ -114,6 +124,7 @@ class AppTheme {
         foregroundColor: AppColors.textPrimaryDark,
         elevation: 0,
         centerTitle: false,
+        systemOverlayStyle: AppTheme.systemOverlayStyle,
         titleTextStyle: GoogleFonts.lora(
           fontSize: 20,
           fontWeight: FontWeight.w600,
