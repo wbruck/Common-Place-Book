@@ -22,6 +22,13 @@ abstract class EntryRepository {
 
   Future<EntryEntity?> getEntryById(String id);
 
+  /// Sets or clears (when [reminderAt] is null) the one-time reminder on an
+  /// entry.
+  Future<void> setReminder({required String id, required DateTime? reminderAt});
+
+  /// All live entries that currently have a reminder set.
+  Future<List<EntryEntity>> getEntriesWithReminders();
+
   // Queries
   Future<List<EntryEntity>> getAllEntries({
     int? limit,

@@ -70,6 +70,26 @@ class LocalEntryRepository implements EntryRepository {
   }
 
   @override
+  Future<void> setReminder({
+    required String id,
+    required DateTime? reminderAt,
+  }) async {
+    await _entriesDao.setReminder(id: id, reminderAt: reminderAt);
+  }
+
+  @override
+  Future<List<EntryEntity>> getEntriesWithReminders() async {
+    final entries = await _entriesDao.getEntriesWithReminders();
+
+    return Future.wait(
+      entries.map((entry) async {
+        final tags = await _entriesDao.getTagsForEntry(entry.id);
+        return EntryMapper.fromDatabase(entry, tags: tags);
+      }),
+    );
+  }
+
+  @override
   Future<List<EntryEntity>> getAllEntries({
     int? limit,
     int? offset,

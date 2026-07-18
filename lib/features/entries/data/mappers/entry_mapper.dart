@@ -15,6 +15,9 @@ class EntryMapper {
       lastViewedAt: entry.lastViewedAt != null
           ? DateTime.fromMillisecondsSinceEpoch(entry.lastViewedAt!)
           : null,
+      reminderAt: entry.reminderAt != null
+          ? DateTime.fromMillisecondsSinceEpoch(entry.reminderAt!)
+          : null,
       viewCount: entry.viewCount,
       isFavorite: entry.isFavorite,
       tags: tags.map(TagMapper.fromDatabase).toList(),
