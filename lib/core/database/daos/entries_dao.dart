@@ -139,6 +139,31 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
         .getSingleOrNull();
   }
 
+  /// Sets (or clears, when [reminderAt] is null) the one-time reminder for an
+  /// entry, bumping [Entries.updatedAt] so the change can propagate on sync.
+  Future<void> setReminder({
+    required String id,
+    required DateTime? reminderAt,
+  }) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await (update(entries)
+          ..where((e) => e.id.equals(id) & e.deletedAt.isNull()))
+        .write(
+      EntriesCompanion(
+        reminderAt: Value(reminderAt?.millisecondsSinceEpoch),
+        updatedAt: Value(now),
+      ),
+    );
+  }
+
+  /// All live entries that currently have a reminder set, used on startup to
+  /// re-sync pending notifications.
+  Future<List<Entry>> getEntriesWithReminders() {
+    return (select(entries)
+          ..where((e) => e.reminderAt.isNotNull() & e.deletedAt.isNull()))
+        .get();
+  }
+
   // ============ Query Operations ============
 
   Future<List<Entry>> getAllEntries({

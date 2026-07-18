@@ -5,10 +5,12 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/notifications/notification_service.dart';
 import '../../../../shared/widgets/entry_card.dart';
 import '../../../../shared/widgets/error_display.dart';
 import '../../../../shared/widgets/loading_indicator.dart';
 import '../../../../shared/widgets/tag_chip.dart';
+import '../../../reminders/domain/entry_reminder_scheduler.dart';
 import '../../data/repositories/entry_repository.dart';
 import '../../domain/entities/entry_entity.dart';
 import '../bloc/entries_list_cubit.dart';
@@ -31,8 +33,15 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   @override
   void initState() {
     super.initState();
+    final entryRepository = context.read<EntryRepository>();
+    final notificationService = context.read<NotificationService>();
     _detailCubit = EntryDetailCubit(
-      entryRepository: context.read<EntryRepository>(),
+      entryRepository: entryRepository,
+      notificationService: notificationService,
+      reminderScheduler: EntryReminderScheduler(
+        entryRepository: entryRepository,
+        notificationService: notificationService,
+      ),
       entryId: widget.entryId,
     )..loadEntry();
   }
@@ -62,6 +71,21 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
           appBar: AppBar(
             actions: [
               if (state is EntryDetailLoaded) ...[
+                if (_detailCubit.remindersSupported)
+                  IconButton(
+                    tooltip: state.entry.reminderAt != null
+                        ? 'Edit reminder'
+                        : 'Set reminder',
+                    icon: Icon(
+                      state.entry.reminderAt != null
+                          ? Icons.notifications_active
+                          : Icons.notifications_none,
+                      color: state.entry.reminderAt != null
+                          ? theme.colorScheme.secondary
+                          : null,
+                    ),
+                    onPressed: () => _handleReminder(context, state.entry),
+                  ),
                 IconButton(
                   icon: Icon(
                     state.entry.isFavorite ? Icons.star : Icons.star_border,
@@ -214,6 +238,16 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                 value: dateFormat.format(entry.lastViewedAt!),
               ),
             ],
+            if (entry.reminderAt != null) ...[
+              const SizedBox(height: 8),
+              _buildMetadataRow(
+                context,
+                icon: Icons.notifications_active_outlined,
+                label: 'Reminder',
+                value: DateFormat.yMMMMd().add_jm().format(entry.reminderAt!),
+                onTap: () => _handleReminder(context, entry),
+              ),
+            ],
 
             // Related entries
             if (state.relatedEntries.isNotEmpty) ...[
@@ -303,6 +337,114 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     context.push(uri.toString());
   }
 
+  Future<void> _handleReminder(BuildContext context, EntryEntity entry) async {
+    if (entry.reminderAt == null) {
+      await _pickAndSetReminder(context, initial: null);
+      return;
+    }
+
+    final action = await showModalBottomSheet<_ReminderAction>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_calendar_outlined),
+              title: const Text('Change reminder'),
+              onTap: () =>
+                  Navigator.of(sheetContext).pop(_ReminderAction.change),
+            ),
+            ListTile(
+              leading: const Icon(Icons.notifications_off_outlined),
+              title: const Text('Remove reminder'),
+              onTap: () =>
+                  Navigator.of(sheetContext).pop(_ReminderAction.remove),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (!mounted || action == null) return;
+
+    switch (action) {
+      case _ReminderAction.change:
+        await _pickAndSetReminder(context, initial: entry.reminderAt);
+      case _ReminderAction.remove:
+        await _detailCubit.clearReminder();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Reminder removed'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+    }
+  }
+
+  /// Runs the date → time picker flow, then persists and schedules the reminder
+  /// (or reports why it could not be set).
+  Future<void> _pickAndSetReminder(
+    BuildContext context, {
+    required DateTime? initial,
+  }) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final dateTimeFormat = DateFormat.yMMMMd().add_jm();
+    final now = DateTime.now();
+    final base = (initial != null && initial.isAfter(now))
+        ? initial
+        : now.add(const Duration(hours: 1));
+
+    final date = await showDatePicker(
+      context: context,
+      initialDate: base,
+      firstDate: DateTime(now.year, now.month, now.day),
+      lastDate: DateTime(now.year + 5, now.month, now.day),
+      helpText: 'Reminder date',
+    );
+    if (date == null || !mounted) return;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(base),
+      helpText: 'Reminder time',
+    );
+    if (time == null || !mounted) return;
+
+    final scheduledFor = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+
+    if (!scheduledFor.isAfter(DateTime.now())) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Pick a time in the future'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final scheduled = await _detailCubit.setReminder(scheduledFor);
+    if (!mounted) return;
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          scheduled
+              ? 'Reminder set for ${dateTimeFormat.format(scheduledFor)}'
+              : 'Enable notifications in system settings to set reminders',
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   void _handleMenuAction(BuildContext context, String action) {
     switch (action) {
       case 'edit':
@@ -362,3 +504,6 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     );
   }
 }
+
+/// The choice offered when tapping an entry that already has a reminder.
+enum _ReminderAction { change, remove }
