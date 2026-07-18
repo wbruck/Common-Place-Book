@@ -172,16 +172,20 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Content
-            Text(
-              entry.content,
-              style: GoogleFonts.lora(
-                fontSize: 22,
-                height: 1.6,
-                fontStyle: FontStyle.italic,
-                color: theme.colorScheme.onSurface,
+            // Content — tap to copy the quote (and its source) to the clipboard.
+            GestureDetector(
+              onTap: () => _copyToClipboard(context),
+              behavior: HitTestBehavior.opaque,
+              child: Text(
+                entry.content,
+                style: GoogleFonts.lora(
+                  fontSize: 22,
+                  height: 1.6,
+                  fontStyle: FontStyle.italic,
+                  color: theme.colorScheme.onSurface,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
             ),
 
             // Source
