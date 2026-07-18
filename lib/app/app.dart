@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -23,6 +24,7 @@ import '../features/tags/data/repositories/tag_repository.dart';
 import '../features/tags/presentation/bloc/tags_cubit.dart';
 import 'router.dart';
 import 'theme/app_theme.dart';
+import 'theme/colors.dart';
 
 class CommonPlaceBookApp extends StatelessWidget {
   const CommonPlaceBookApp({
@@ -129,14 +131,49 @@ class CommonPlaceBookApp extends StatelessWidget {
             darkTheme: AppTheme.dark,
             themeMode: themeMode,
             routerConfig: appRouter,
-            builder: (context, child) => _FirstRunIntroGate(
-              enabled: showIntroOnLaunch,
-              settingsRepository: settingsRepository,
-              child: child ?? const SizedBox.shrink(),
+            builder: (context, child) => _StatusBarBrandStrip(
+              child: _FirstRunIntroGate(
+                enabled: showIntroOnLaunch,
+                settingsRepository: settingsRepository,
+                child: child ?? const SizedBox.shrink(),
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Paints the brand orange behind the Android status bar, matching the PWA's
+/// `theme_color`.
+///
+/// Android 15+ enforces edge-to-edge for apps targeting SDK 35+ and ignores
+/// `SystemUiOverlayStyle.statusBarColor`, so the app has to draw this region
+/// itself; older Android versions are covered by the `statusBarColor` in
+/// [AppTheme.systemOverlayStyle].
+class _StatusBarBrandStrip extends StatelessWidget {
+  const _StatusBarBrandStrip({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      return child;
+    }
+    return Stack(
+      textDirection: TextDirection.ltr,
+      children: [
+        child,
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: MediaQuery.paddingOf(context).top,
+          child: const ColoredBox(color: AppColors.brandOrange),
+        ),
+      ],
     );
   }
 }
