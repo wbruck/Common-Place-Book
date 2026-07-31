@@ -19,6 +19,10 @@ class Entries extends Table {
   IntColumn get viewCount => integer().withDefault(const Constant(0))();
   BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
 
+  /// Epoch ms at which a one-time reminder should fire for this entry.
+  /// NULL means no reminder is set.
+  IntColumn get reminderAt => integer().nullable()();
+
   /// Owning user id once synced. NULL means "local-only, not yet synced".
   TextColumn get userId => text().nullable()();
 
@@ -108,7 +112,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   static QueryExecutor _openConnection() {
     return connection.openConnection();
@@ -175,6 +179,12 @@ class AppDatabase extends _$AppDatabase {
           await customStatement('DROP TABLE _entry_tags_old');
 
           await customStatement('PRAGMA foreign_keys = ON');
+        }
+
+        // Migration from v3 to v4: add the per-entry reminder timestamp. A
+        // plain ALTER TABLE ADD COLUMN works for the new nullable column.
+        if (from < 4) {
+          await m.addColumn(entries, entries.reminderAt);
         }
       },
       beforeOpen: (details) async {

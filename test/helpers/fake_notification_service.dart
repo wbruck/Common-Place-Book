@@ -16,6 +16,23 @@ class ScheduledReminder {
   final String payload;
 }
 
+/// Records a scheduled per-entry reminder for assertions.
+class ScheduledEntryReminder {
+  const ScheduledEntryReminder({
+    required this.entryId,
+    required this.dateTime,
+    required this.title,
+    required this.body,
+    required this.payload,
+  });
+
+  final String entryId;
+  final DateTime dateTime;
+  final String title;
+  final String body;
+  final String payload;
+}
+
 /// In-memory [NotificationService] for tests: records schedule/cancel calls
 /// and answers permission requests with a configurable [permissionGranted].
 class FakeNotificationService implements NotificationService {
@@ -30,6 +47,9 @@ class FakeNotificationService implements NotificationService {
   final List<ScheduledReminder> scheduled = [];
   int cancelCount = 0;
   int permissionRequestCount = 0;
+
+  final List<ScheduledEntryReminder> scheduledEntryReminders = [];
+  final List<String> canceledEntryReminders = [];
 
   @override
   bool get isSupported => supported;
@@ -68,5 +88,29 @@ class FakeNotificationService implements NotificationService {
   @override
   Future<void> cancelDailyReminder() async {
     cancelCount++;
+  }
+
+  @override
+  Future<void> scheduleEntryReminder({
+    required String entryId,
+    required DateTime dateTime,
+    required String title,
+    required String body,
+    required String payload,
+  }) async {
+    scheduledEntryReminders.add(
+      ScheduledEntryReminder(
+        entryId: entryId,
+        dateTime: dateTime,
+        title: title,
+        body: body,
+        payload: payload,
+      ),
+    );
+  }
+
+  @override
+  Future<void> cancelEntryReminder(String entryId) async {
+    canceledEntryReminders.add(entryId);
   }
 }

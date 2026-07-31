@@ -15,6 +15,7 @@ import 'core/notifications/notification_service.dart';
 import 'core/utils/app_logger.dart';
 import 'features/entries/data/repositories/local_entry_repository.dart';
 import 'features/reminders/domain/daily_reminder_scheduler.dart';
+import 'features/reminders/domain/entry_reminder_scheduler.dart';
 import 'features/reminders/domain/reminder_settings.dart';
 import 'features/settings/data/local_settings_repository.dart';
 
@@ -104,6 +105,23 @@ void main() async {
           .catchError((Object error, StackTrace stackTrace) {
         AppLogger.error(
           'Daily reminder reschedule failed on startup',
+          tag: 'Startup',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }),
+    );
+
+    // Re-sync per-entry reminders: reschedule any still in the future (Android
+    // drops pending alarms on reboot) and clear ones whose time has passed.
+    // Fire-and-forget so it never blocks first paint.
+    unawaited(
+      EntryReminderScheduler(
+        entryRepository: entryRepository,
+        notificationService: notificationService,
+      ).syncAll().catchError((Object error, StackTrace stackTrace) {
+        AppLogger.error(
+          'Entry reminder sync failed on startup',
           tag: 'Startup',
           error: error,
           stackTrace: stackTrace,

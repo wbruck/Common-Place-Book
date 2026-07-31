@@ -9,6 +9,7 @@ class EntryEntity {
     required this.createdAt, required this.updatedAt, this.source,
     this.categoryId,
     this.lastViewedAt,
+    this.reminderAt,
     this.viewCount = 0,
     this.isFavorite = false,
     this.tags = const [],
@@ -20,6 +21,10 @@ class EntryEntity {
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? lastViewedAt;
+
+  /// When a one-time reminder should fire for this entry, or null when none is
+  /// set. Reminders are delivered as local notifications on mobile only.
+  final DateTime? reminderAt;
   final int viewCount;
   final bool isFavorite;
   final List<TagEntity> tags;
@@ -32,6 +37,7 @@ class EntryEntity {
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? lastViewedAt,
+    DateTime? reminderAt,
     int? viewCount,
     bool? isFavorite,
     List<TagEntity>? tags,
@@ -44,6 +50,7 @@ class EntryEntity {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       lastViewedAt: lastViewedAt ?? this.lastViewedAt,
+      reminderAt: reminderAt ?? this.reminderAt,
       viewCount: viewCount ?? this.viewCount,
       isFavorite: isFavorite ?? this.isFavorite,
       tags: tags ?? this.tags,
@@ -62,6 +69,7 @@ class EntryEntity {
         other.createdAt == createdAt &&
         other.updatedAt == updatedAt &&
         other.lastViewedAt == lastViewedAt &&
+        other.reminderAt == reminderAt &&
         other.viewCount == viewCount &&
         other.isFavorite == isFavorite &&
         listEquals(other.tags, tags);
@@ -77,6 +85,7 @@ class EntryEntity {
       createdAt,
       updatedAt,
       lastViewedAt,
+      reminderAt,
       viewCount,
       isFavorite,
       Object.hashAll(tags),

@@ -45,6 +45,20 @@ abstract class NotificationService {
 
   /// Cancels the pending daily reminder, if any.
   Future<void> cancelDailyReminder();
+
+  /// Schedules a one-time reminder for a single entry at [dateTime], replacing
+  /// any previously scheduled reminder for the same [entryId]. [payload] is the
+  /// entry id, delivered back to [onNotificationTap] when the user taps it.
+  Future<void> scheduleEntryReminder({
+    required String entryId,
+    required DateTime dateTime,
+    required String title,
+    required String body,
+    required String payload,
+  });
+
+  /// Cancels the pending reminder for [entryId], if any.
+  Future<void> cancelEntryReminder(String entryId);
 }
 
 /// [NotificationService] backed by flutter_local_notifications.
@@ -57,7 +71,29 @@ class LocalNotificationService implements NotificationService {
   /// of stacking a new one (idempotent across launches and hot restarts).
   static const int _dailyReminderId = 1001;
 
+  /// Per-entry reminder ids are offset above this so they never collide with
+  /// the fixed [_dailyReminderId].
+  static const int _entryReminderIdBase = 100000;
+
   final FlutterLocalNotificationsPlugin _plugin;
+
+  /// Maps an entry's UUID to a stable, positive notification id.
+  ///
+  /// Derived with a deterministic FNV-1a hash (not [String.hashCode], which is
+  /// not stable across launches) so a reminder scheduled in one session can be
+  /// cancelled or replaced in a later one without persisting the numeric id.
+  /// Collisions across distinct entries are astronomically unlikely at this
+  /// app's scale.
+  static int _entryReminderId(String entryId) {
+    var hash = 0x811c9dc5;
+    for (final unit in entryId.codeUnits) {
+      hash = (hash ^ unit) & 0xffffffff;
+      hash = (hash * 0x01000193) & 0xffffffff;
+    }
+    // Fold into a positive 30-bit range, then offset past the reserved ids so
+    // the result stays a positive 31-bit int on Android.
+    return _entryReminderIdBase + (hash % 0x3fffffff);
+  }
 
   @override
   bool get isSupported => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
@@ -169,6 +205,45 @@ class LocalNotificationService implements NotificationService {
   Future<void> cancelDailyReminder() async {
     if (!isSupported) return;
     await _plugin.cancel(id: _dailyReminderId);
+  }
+
+  @override
+  Future<void> scheduleEntryReminder({
+    required String entryId,
+    required DateTime dateTime,
+    required String title,
+    required String body,
+    required String payload,
+  }) async {
+    if (!isSupported) return;
+
+    await _plugin.zonedSchedule(
+      id: _entryReminderId(entryId),
+      title: title,
+      body: body,
+      payload: payload,
+      scheduledDate: tz.TZDateTime.from(dateTime, tz.local),
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails(
+          'entry_reminder',
+          'Entry reminders',
+          channelDescription: 'Reminders you set for individual entries',
+          // Expandable so long quotes are readable in the shade.
+          styleInformation: BigTextStyleInformation(body),
+        ),
+        iOS: const DarwinNotificationDetails(),
+      ),
+      // Inexact avoids the Android exact-alarm special permission; a reminder
+      // drifting by a few minutes is an acceptable trade for not prompting for
+      // it (matches the daily reminder).
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+    );
+  }
+
+  @override
+  Future<void> cancelEntryReminder(String entryId) async {
+    if (!isSupported) return;
+    await _plugin.cancel(id: _entryReminderId(entryId));
   }
 
   /// Today at [time] in the local timezone, or tomorrow when that moment has
