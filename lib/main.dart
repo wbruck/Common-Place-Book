@@ -12,6 +12,7 @@ import 'core/database/database.dart';
 import 'core/database/database_provider.dart';
 import 'core/database/tombstone_purge_service.dart';
 import 'core/notifications/notification_service.dart';
+import 'core/share/share_intent_service.dart';
 import 'core/utils/app_logger.dart';
 import 'features/entries/data/repositories/local_entry_repository.dart';
 import 'features/reminders/domain/daily_reminder_scheduler.dart';
@@ -128,6 +129,21 @@ void main() async {
         );
       }),
     );
+  }
+
+  // Native Android share sheet (ACTION_SEND). A share can cold-start the app
+  // (becomes the router's start location, opening the pre-filled new-entry
+  // form) or arrive while it is already running (pushed onto the navigator).
+  final shareIntentService = ShareIntentService();
+  if (shareIntentService.isSupported) {
+    final initialShare = await shareIntentService.getInitialShare();
+    if (initialShare != null) {
+      shareLaunchLocation = shareTargetLocation(initialShare);
+    }
+    shareIntentService.setOnShareReceived((params) {
+      final location = shareTargetLocation(params);
+      if (location != null) appRouter.push(location);
+    });
   }
 
   runApp(

@@ -25,6 +25,12 @@ final rootNavigatorKey = GlobalKey<NavigatorState>();
 /// Mobile-only, so it never competes with the web-only share-target location.
 String? notificationLaunchLocation;
 
+/// Set by `main()` (before `runApp`, like [notificationLaunchLocation]) when
+/// the app was cold-started from the native Android share sheet (ACTION_SEND,
+/// see ShareIntentService); consumed once as the router's start location.
+/// Android-only, so it never competes with the web-only share-target location.
+String? shareLaunchLocation;
+
 /// Matches a URL sitting at the end of the shared text (optionally followed by
 /// trailing whitespace). Chrome's "share selected text" appends the page URL
 /// after the selection, so we lift it out of the quote and into the source.
@@ -55,13 +61,14 @@ String _stripFragmentDirective(String url) {
 String _shareInitialLocation() =>
     kIsWeb ? (shareTargetLocation(Uri.base.queryParameters) ?? '/') : '/';
 
-/// Builds the new-entry deep-link for a share-target launch from the raw query
-/// [params] (`text`, `title`, `url`), or null when nothing shareable was sent.
+/// Builds the new-entry deep-link for a share-target launch from the raw
+/// share [params] (`text`, `title`, `url`), or null when nothing shareable was
+/// sent. Fed by both the web PWA share target (query parameters) and the
+/// native Android share sheet (intent extras, via ShareIntentService).
 ///
 /// Chrome appends the page URL to the end of the shared selection, so a
 /// trailing URL is stripped out of the quote and used as the entry's source
 /// (the "Author / source" field) instead of cluttering the content.
-@visibleForTesting
 String? shareTargetLocation(Map<String, String> params) {
   var text = params['text']?.trim() ?? '';
   final title = params['title']?.trim() ?? '';
@@ -92,7 +99,8 @@ String? shareTargetLocation(Map<String, String> params) {
 
 final appRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
-  initialLocation: notificationLaunchLocation ?? _shareInitialLocation(),
+  initialLocation:
+      notificationLaunchLocation ?? shareLaunchLocation ?? _shareInitialLocation(),
   routes: [
     GoRoute(
       path: '/',
