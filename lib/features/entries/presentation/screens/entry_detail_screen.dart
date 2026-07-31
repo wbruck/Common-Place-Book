@@ -370,14 +370,14 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
       ),
     );
 
-    if (!mounted || action == null) return;
+    if (!context.mounted || action == null) return;
 
     switch (action) {
       case _ReminderAction.change:
         await _pickAndSetReminder(context, initial: entry.reminderAt);
       case _ReminderAction.remove:
         await _detailCubit.clearReminder();
-        if (!mounted) return;
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Reminder removed'),
@@ -407,7 +407,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
       lastDate: DateTime(now.year + 5, now.month, now.day),
       helpText: 'Reminder date',
     );
-    if (date == null || !mounted) return;
+    if (date == null || !context.mounted) return;
 
     final time = await showTimePicker(
       context: context,

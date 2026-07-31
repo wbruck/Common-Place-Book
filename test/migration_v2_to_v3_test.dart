@@ -184,7 +184,7 @@ void main() {
     try {
       // The declared schema version drives the v2 -> v3 onUpgrade that the
       // first query below triggers.
-      expect(db.schemaVersion, 3);
+      expect(db.schemaVersion, 4);
 
       // --- Entries survived, with new columns defaulting to NULL ---
       final entries = await db.select(db.entries).get()
@@ -244,7 +244,7 @@ void main() {
 
     final db = AppDatabase.forTesting(NativeDatabase(dbFile));
     try {
-      expect(db.schemaVersion, 3);
+      expect(db.schemaVersion, 4);
 
       // Re-inserting an existing (entry_id, tag_id) pair must be rejected by
       // the UNIQUE index that replaced the old composite primary key.
@@ -268,7 +268,7 @@ void main() {
 
     final db = AppDatabase.forTesting(NativeDatabase(dbFile));
     try {
-      expect(db.schemaVersion, 3);
+      expect(db.schemaVersion, 4);
 
       // beforeOpen sets PRAGMA foreign_keys = ON; deleting an entry should
       // cascade to its entry_tags links.
@@ -294,7 +294,7 @@ void main() {
     try {
       // Running a query triggers the v1 -> v3 onUpgrade (both the v1->v2 no-op
       // branch and the v2->v3 sync-metadata branch).
-      expect(db.schemaVersion, 3);
+      expect(db.schemaVersion, 4);
 
       final entries = await db.select(db.entries).get()
         ..sort((a, b) => a.id.compareTo(b.id));

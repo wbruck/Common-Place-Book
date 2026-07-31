@@ -93,8 +93,10 @@ void main() {
       final scheduled = notifications.scheduledEntryReminders.single;
       expect(scheduled.entryId, entry.id);
       expect(scheduled.payload, entry.id);
-      expect(scheduled.dateTime.millisecondsSinceEpoch,
-          when.millisecondsSinceEpoch);
+      expect(
+        scheduled.dateTime.millisecondsSinceEpoch,
+        when.millisecondsSinceEpoch,
+      );
       expect(scheduled.title, '— Someone');
       expect(scheduled.body, 'A profound thought');
     });
@@ -138,8 +140,10 @@ void main() {
 
       await scheduler.syncAll();
 
-      expect(notifications.scheduledEntryReminders.map((r) => r.entryId),
-          [entry.id]);
+      expect(
+        notifications.scheduledEntryReminders.map((r) => r.entryId),
+        [entry.id],
+      );
       final reloaded = await entries.getEntryById(entry.id);
       expect(reloaded!.reminderAt, isNotNull);
     });
@@ -158,8 +162,11 @@ void main() {
       expect(notifications.scheduledEntryReminders, isEmpty);
       expect(notifications.canceledEntryReminders, contains(entry.id));
       final reloaded = await entries.getEntryById(entry.id);
-      expect(reloaded!.reminderAt, isNull,
-          reason: 'a past-due one-shot should be cleared');
+      expect(
+        reloaded!.reminderAt,
+        isNull,
+        reason: 'a past-due one-shot should be cleared',
+      );
     });
   });
 
