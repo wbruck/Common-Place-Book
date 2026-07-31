@@ -202,48 +202,64 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Opens the Timeline (Discover feed) centered on the day the given
+  /// [entry] was created, so "Discover more" continues from the card in view.
+  void _openTimelineForEntry(BuildContext context, EntryEntity entry) {
+    final uri = Uri(
+      path: '/discover',
+      queryParameters: {
+        'date': entry.createdAt.millisecondsSinceEpoch.toString(),
+      },
+    );
+    context.push(uri.toString());
+  }
+
   Widget _buildTodaysWisdom(BuildContext context) {
     final theme = Theme.of(context);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: BlocBuilder<DiscoveryCubit, DiscoveryState>(
+        bloc: _discoveryCubit,
+        builder: (context, state) {
+          final loadedEntry = state is DiscoveryLoaded ? state.entry : null;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "Today's Wisdom",
-                style: theme.textTheme.titleMedium,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: Text(
+                      "Today's Wisdom",
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.tonalIcon(
+                    onPressed: loadedEntry == null
+                        ? null
+                        : () => _openTimelineForEntry(context, loadedEntry),
+                    icon: const Icon(Icons.explore_outlined, size: 18),
+                    label: const Text('Discover more'),
+                  ),
+                ],
               ),
-              TextButton(
-                onPressed: () => context.push('/discover'),
-                child: const Text('Discover more'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          BlocBuilder<DiscoveryCubit, DiscoveryState>(
-            bloc: _discoveryCubit,
-            builder: (context, state) {
-              if (state is DiscoveryLoading) {
-                return const SizedBox(
+              const SizedBox(height: 12),
+              if (state is DiscoveryLoading)
+                const SizedBox(
                   height: 200,
                   child: LoadingIndicator(),
-                );
-              }
-
-              if (state is DiscoveryLoaded) {
-                return LargeEntryCard(
-                  entry: state.entry,
-                  onTap: () => context.push('/entry/${state.entry.id}'),
+                )
+              else if (loadedEntry != null)
+                LargeEntryCard(
+                  entry: loadedEntry,
+                  onTap: () => context.push('/entry/${loadedEntry.id}'),
                   onShuffle: () => _discoveryCubit.shuffle(),
-                );
-              }
-
-              if (state is DiscoveryEmpty) {
-                return Card(
+                )
+              else if (state is DiscoveryEmpty)
+                Card(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
                     child: Column(
@@ -264,13 +280,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-                );
-              }
-
-              return const SizedBox.shrink();
-            },
-          ),
-        ],
+                )
+              else
+                const SizedBox.shrink(),
+            ],
+          );
+        },
       ),
     );
   }
