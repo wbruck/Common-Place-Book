@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -54,6 +56,16 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
     _contentController =
         TextEditingController(text: widget.initialContent ?? '');
     _sourceController = TextEditingController(text: widget.initialSource ?? '');
+
+    // The tag picker reads the app-level TagsCubit, which is normally loaded
+    // by HomeScreen. When the app cold-starts straight into this form (text
+    // shared from another app, a reminder notification tap) HomeScreen never
+    // builds, so the cubit is still TagsInitial and the picker would show no
+    // tags. Kick off the load here in that case (and retry a failed one).
+    final tagsCubit = context.read<TagsCubit>();
+    if (tagsCubit.state is TagsInitial || tagsCubit.state is TagsError) {
+      unawaited(tagsCubit.loadTags());
+    }
 
     if (isEditing) {
       _formCubit.initEditEntry(widget.entryId!);
